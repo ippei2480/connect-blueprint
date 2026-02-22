@@ -183,17 +183,22 @@ def layout(flow):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) < 2:
-        print("Usage: python3 layout.py <flow.json>", file=sys.stderr)
-        sys.exit(1)
+    import argparse
+    parser = argparse.ArgumentParser(description='Amazon Connect フローJSONにposition座標を付与する')
+    parser.add_argument('flow_json', help='フローJSONファイルのパス')
+    parser.add_argument('--stdout', action='store_true', help='結果を標準出力に出力（ファイル上書きしない）')
+    args = parser.parse_args()
 
-    path = sys.argv[1]
+    path = args.flow_json
     with open(path) as f:
         flow = json.load(f)
 
     flow = layout(flow)
 
-    with open(path, 'w', encoding='utf-8') as f:
-        json.dump(flow, f, ensure_ascii=False, indent=2)
-
-    print(f"✅ {len(flow['Actions'])} actions に座標を付与しました → {path}")
+    if args.stdout:
+        json.dump(flow, sys.stdout, ensure_ascii=False, indent=2)
+        sys.stdout.write('\n')
+    else:
+        with open(path, 'w', encoding='utf-8') as f:
+            json.dump(flow, f, ensure_ascii=False, indent=2)
+        print(f"✅ {len(flow['Actions'])} actions に座標を付与しました → {path}")

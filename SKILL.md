@@ -10,7 +10,7 @@ license: MIT
 compatibility: Requires AWS CLI with a valid profile (connect:* permissions). Python 3.8+ for layout.py.
 metadata:
   author: ippei2480
-  version: "0.1.0"
+  version: "0.2.0"
 ---
 
 # connect-blueprint
