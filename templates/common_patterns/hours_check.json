@@ -1,0 +1,26 @@
+{
+  "_description": "営業時間チェックパターン — HoursOfOperationId を環境に合わせて変更",
+  "check": {
+    "Identifier": "<UUID_CHECK>",
+    "Type": "CheckHoursOfOperation",
+    "Parameters": {
+      "HoursOfOperationId": "<YOUR_HOURS_OF_OPERATION_ARN>"
+    },
+    "Transitions": {
+      "NextAction": "<OUT_OF_HOURS_UUID>",
+      "Conditions": [
+        {
+          "NextAction": "<IN_HOURS_UUID>",
+          "Condition": { "Operator": "Equals", "Operands": ["True"] }
+        },
+        {
+          "NextAction": "<OUT_OF_HOURS_UUID>",
+          "Condition": { "Operator": "Equals", "Operands": ["False"] }
+        }
+      ],
+      "Errors": [
+        { "NextAction": "<IN_HOURS_UUID>", "ErrorType": "NoMatchingError" }
+      ]
+    }
+  }
+}

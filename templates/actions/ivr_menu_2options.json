@@ -1,0 +1,32 @@
+{
+  "_description": "2選択肢IVRメニューテンプレート — Text と遷移先を書き換えて使用",
+  "Identifier": "<UUID>",
+  "Type": "GetParticipantInput",
+  "Parameters": {
+    "Text": "○○は1を、△△は2を押してください。",
+    "DTMFConfiguration": {
+      "InputTimeLimitSeconds": "8",
+      "FinishOnKey": "#",
+      "InactivityTimeLimitSeconds": "5"
+    },
+    "InputTimeLimitSeconds": "8"
+  },
+  "Transitions": {
+    "NextAction": "<TIMEOUT_UUID>",
+    "Conditions": [
+      {
+        "NextAction": "<OPTION1_UUID>",
+        "Condition": { "Operator": "Equals", "Operands": ["1"] }
+      },
+      {
+        "NextAction": "<OPTION2_UUID>",
+        "Condition": { "Operator": "Equals", "Operands": ["2"] }
+      }
+    ],
+    "Errors": [
+      { "NextAction": "<TIMEOUT_UUID>", "ErrorType": "InputTimeLimitExceeded" },
+      { "NextAction": "<TIMEOUT_UUID>", "ErrorType": "NoMatchingCondition" },
+      { "NextAction": "<TIMEOUT_UUID>", "ErrorType": "NoMatchingError" }
+    ]
+  }
+}

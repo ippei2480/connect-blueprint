@@ -1,0 +1,29 @@
+{
+  "_description": "キュー設定＋転送テンプレート — QueueId を書き換えて使用",
+  "_usage": "UpdateContactTargetQueue → TransferContactToQueue の2ステップで使う",
+  "set_queue": {
+    "Identifier": "<UUID_SET>",
+    "Type": "UpdateContactTargetQueue",
+    "Parameters": {
+      "QueueId": "<YOUR_QUEUE_ARN>"
+    },
+    "Transitions": {
+      "NextAction": "<UUID_TRANSFER>",
+      "Errors": [
+        { "NextAction": "<ERROR_UUID>", "ErrorType": "NoMatchingError" }
+      ]
+    }
+  },
+  "transfer": {
+    "Identifier": "<UUID_TRANSFER>",
+    "Type": "TransferContactToQueue",
+    "Parameters": {},
+    "Transitions": {
+      "NextAction": "<DISCONNECT_UUID>",
+      "Errors": [
+        { "NextAction": "<DISCONNECT_UUID>", "ErrorType": "QueueAtCapacity" },
+        { "NextAction": "<DISCONNECT_UUID>", "ErrorType": "NoMatchingError" }
+      ]
+    }
+  }
+}

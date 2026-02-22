@@ -1,0 +1,14 @@
+{
+  "_description": "挨拶メッセージテンプレート — Text を書き換えて使用",
+  "Identifier": "<UUID>",
+  "Type": "MessageParticipant",
+  "Parameters": {
+    "Text": "お電話ありがとうございます。○○株式会社でございます。"
+  },
+  "Transitions": {
+    "NextAction": "<NEXT_UUID>",
+    "Errors": [
+      { "NextAction": "<ERROR_UUID>", "ErrorType": "NoMatchingError" }
+    ]
+  }
+}

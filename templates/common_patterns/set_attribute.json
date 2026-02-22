@@ -1,0 +1,16 @@
+{
+  "_description": "コンタクト属性設定パターン — キーと値を書き換えて使用",
+  "Identifier": "<UUID>",
+  "Type": "UpdateContactAttributes",
+  "Parameters": {
+    "Attributes": {
+      "<KEY>": "<VALUE>"
+    }
+  },
+  "Transitions": {
+    "NextAction": "<NEXT_UUID>",
+    "Errors": [
+      { "NextAction": "<ERROR_UUID>", "ErrorType": "NoMatchingError" }
+    ]
+  }
+}
