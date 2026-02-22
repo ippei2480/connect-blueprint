@@ -2,6 +2,9 @@
 
 > An Agent Skill for designing and generating Amazon Connect contact flows.
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Agent Skills Compatible](https://img.shields.io/badge/Agent_Skills-Compatible-blue)](https://agentskills.io)
+
 ## What this skill does
 
 **connect-blueprint** gives AI agents the knowledge and tools to:
@@ -10,11 +13,31 @@
 - **Convert diagrams to flows** — turn draw.io XML, Mermaid diagrams, or screenshots into Amazon Connect flow JSON
 - **Deploy to AWS** — create or update contact flows via AWS CLI
 - **Auto-layout** — assign clean x/y coordinates using topological ordering (no more zigzag arrows)
+- **Validate before deploy** — local structure checks + AWS API validation
+
+## Quick Start
+
+```
+You: "Amazon Connectで営業時間判定付きのIVRフローを作って"
+
+Agent: 
+1. Connect環境を確認（キュー、プロンプト、Lambda一覧）
+2. Mermaid設計図を生成 → レビュー依頼
+3. 承認後、フローJSONを生成
+4. バリデーション → デプロイ
+```
 
 ## Compatibility
 
-Works with any [Agent Skills](https://agentskills.io)-compatible agent, including:
-Claude Code, Cursor, Gemini CLI, Goose, Roo Code, and others.
+Works with any [Agent Skills](https://agentskills.io)-compatible agent:
+
+| Agent | Installation |
+|-------|-------------|
+| **Claude Code** | `claude mcp add-skill https://github.com/ippei2480/connect-blueprint` |
+| **Cursor** | Add to `.cursor/skills/` or reference in settings |
+| **Gemini CLI** | Add SKILL.md path to your Gemini configuration |
+| **Goose** | `goose skills add https://github.com/ippei2480/connect-blueprint` |
+| **Roo Code** | Add to custom instructions or skill directory |
 
 **Requirements:**
 - AWS CLI with a valid profile (`connect:*` permissions)
@@ -35,20 +58,39 @@ The agent will:
 
 Provide a draw.io file, Mermaid diagram, or screenshot — the agent will parse it and generate flow JSON.
 
-## Installation
+## Examples
 
-### Claude Code
-Add to your project's `CLAUDE.md`, or install via:
+Ready-to-use sample flows with Mermaid diagrams and deployable JSON:
+
+| Example | Description | Key Features |
+|---------|-------------|-------------|
+| [Business Hours Routing](examples/business-hours-routing/) | 営業時間内外の振り分け | CheckHoursOfOperation |
+| [Callback Reservation](examples/callback-reservation/) | 待ち時間が長い場合のコールバック予約 | Lambda連携, 条件分岐 |
+| [NPS Survey](examples/nps-survey/) | 通話後の顧客満足度アンケート | DTMF 0-9, Lambda記録 |
+| [VIP Escalation](examples/vip-escalation/) | VIP顧客の優先キュー振り分け | 顧客DB照合, 優先キュー |
+| [Multilingual](examples/multilingual/) | 日本語/英語の言語選択対応 | 属性設定, 言語別IVR |
+| [Inquiry Routing](examples/inquiry-routing/) | 問い合わせ種別振り分け | 4択IVR, リトライ |
+
+## Scripts
+
 ```bash
-claude skills add https://github.com/ippei2480/connect-blueprint
+# ローカルバリデーション
+./scripts/validate.sh flow.json
+
+# AWSバリデーション込み
+./scripts/validate.sh flow.json --aws --instance-id $INSTANCE_ID --profile $PROFILE
+
+# レイアウト座標付与
+python3 scripts/layout.py flow.json
+
+# ワンコマンドデプロイ（バリデーション→レイアウト→デプロイ）
+./scripts/deploy.sh create flow.json --name "My Flow" --instance-id $INSTANCE_ID --profile $PROFILE
+./scripts/deploy.sh update flow.json --flow-id $FLOW_ID --instance-id $INSTANCE_ID --profile $PROFILE
 ```
 
-### Other agents
-Download the skill and follow your agent's skill installation instructions.
+## Mermaid Notation
 
-## Mermaid notation
-
-This skill uses a Connect-specific Mermaid notation where **node shapes map to ActionTypes**:
+Connect-specific Mermaid notation where **node shapes map to ActionTypes**:
 
 | Shape | Syntax | ActionType |
 |-------|--------|-----------|
@@ -77,30 +119,19 @@ graph LR
   transfer --> end1
 ```
 
-## Examples
+## References
 
-Ready-to-use sample flows with Mermaid diagrams and deployable JSON:
+| Document | Contents |
+|----------|----------|
+| [Action Types](references/action_types.md) | 各ActionTypeのパラメータ・JSON例 |
+| [Flow JSON Structure](references/flow_json_structure.md) | トップレベル構造・バリデーションルール |
+| [Mermaid Notation](references/mermaid_notation.md) | ノード形状→ActionType マッピング |
+| [AWS CLI Commands](references/aws_cli_commands.md) | Connect関連CLIコマンド |
+| [Layout Rules](references/layout_rules.md) | 座標付与アルゴリズム |
+| [Error Handling Patterns](references/error_handling_patterns.md) | エラーハンドリングのベストプラクティス |
+| [Connect Limits](references/connect_limits.md) | APIの制限・注意点 |
 
-| Example | Description |
-|---------|-------------|
-| [Business Hours Routing](examples/business-hours-routing/) | 営業時間内外の振り分け |
-| [Callback Reservation](examples/callback-reservation/) | 待ち時間が長い場合のコールバック予約 |
-| [NPS Survey](examples/nps-survey/) | 通話後の顧客満足度アンケート |
-| [VIP Escalation](examples/vip-escalation/) | VIP顧客の優先キュー振り分け |
-| [Multilingual](examples/multilingual/) | 日本語/英語の言語選択対応 |
-| [Inquiry Routing](examples/inquiry-routing/) | 問い合わせ種別（請求・技術・契約等）振り分け |
-
-## Validation
-
-```bash
-# Local validation (JSON structure, reference integrity)
-./scripts/validate.sh flow.json
-
-# AWS validation (Connect API check)
-./scripts/validate.sh flow.json --aws --instance-id $INSTANCE_ID --profile $PROFILE
-```
-
-## Layout algorithm
+## Layout Algorithm
 
 Positions are assigned automatically using a topological sort:
 - **Forward rule**: every transition increases the x coordinate
@@ -109,6 +140,10 @@ Positions are assigned automatically using a topological sort:
 - **Errors**: below conditions
 
 Loops are detected via DFS and excluded from layout calculation.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## License
 
