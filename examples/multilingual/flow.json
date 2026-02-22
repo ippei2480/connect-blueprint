@@ -1,0 +1,214 @@
+{
+  "Version": "2019-10-30",
+  "StartAction": "e0000001-0000-0000-0000-000000000001",
+  "Actions": [
+    {
+      "Identifier": "e0000001-0000-0000-0000-000000000001",
+      "Type": "GetParticipantInput",
+      "Parameters": {
+        "Text": "お電話ありがとうございます。日本語は1を押してください。For English, press 2.",
+        "DTMFConfiguration": {
+          "InputTimeLimitSeconds": "8",
+          "FinishOnKey": "#",
+          "InactivityTimeLimitSeconds": "5"
+        },
+        "InputTimeLimitSeconds": "8"
+      },
+      "Transitions": {
+        "NextAction": "e0000001-0000-0000-0000-000000000002",
+        "Conditions": [
+          {
+            "NextAction": "e0000001-0000-0000-0000-000000000002",
+            "Condition": { "Operator": "Equals", "Operands": ["1"] }
+          },
+          {
+            "NextAction": "e0000001-0000-0000-0000-000000000003",
+            "Condition": { "Operator": "Equals", "Operands": ["2"] }
+          }
+        ],
+        "Errors": [
+          { "NextAction": "e0000001-0000-0000-0000-000000000002", "ErrorType": "InputTimeLimitExceeded" },
+          { "NextAction": "e0000001-0000-0000-0000-000000000002", "ErrorType": "NoMatchingCondition" },
+          { "NextAction": "e0000001-0000-0000-0000-000000000002", "ErrorType": "NoMatchingError" }
+        ]
+      }
+    },
+    {
+      "Identifier": "e0000001-0000-0000-0000-000000000002",
+      "Type": "UpdateContactAttributes",
+      "Parameters": {
+        "Attributes": {
+          "language": "ja"
+        }
+      },
+      "Transitions": {
+        "NextAction": "e0000001-0000-0000-0000-000000000004",
+        "Errors": [
+          { "NextAction": "e0000001-0000-0000-0000-000000000012", "ErrorType": "NoMatchingError" }
+        ]
+      }
+    },
+    {
+      "Identifier": "e0000001-0000-0000-0000-000000000003",
+      "Type": "UpdateContactAttributes",
+      "Parameters": {
+        "Attributes": {
+          "language": "en"
+        }
+      },
+      "Transitions": {
+        "NextAction": "e0000001-0000-0000-0000-000000000005",
+        "Errors": [
+          { "NextAction": "e0000001-0000-0000-0000-000000000012", "ErrorType": "NoMatchingError" }
+        ]
+      }
+    },
+    {
+      "Identifier": "e0000001-0000-0000-0000-000000000004",
+      "Type": "GetParticipantInput",
+      "Parameters": {
+        "Text": "営業へのお問い合わせは1を、サポートへのお問い合わせは2を押してください。",
+        "DTMFConfiguration": {
+          "InputTimeLimitSeconds": "8",
+          "FinishOnKey": "#",
+          "InactivityTimeLimitSeconds": "5"
+        },
+        "InputTimeLimitSeconds": "8"
+      },
+      "Transitions": {
+        "NextAction": "e0000001-0000-0000-0000-000000000010",
+        "Conditions": [
+          {
+            "NextAction": "e0000001-0000-0000-0000-000000000006",
+            "Condition": { "Operator": "Equals", "Operands": ["1"] }
+          },
+          {
+            "NextAction": "e0000001-0000-0000-0000-000000000007",
+            "Condition": { "Operator": "Equals", "Operands": ["2"] }
+          }
+        ],
+        "Errors": [
+          { "NextAction": "e0000001-0000-0000-0000-000000000010", "ErrorType": "InputTimeLimitExceeded" },
+          { "NextAction": "e0000001-0000-0000-0000-000000000010", "ErrorType": "NoMatchingCondition" },
+          { "NextAction": "e0000001-0000-0000-0000-000000000010", "ErrorType": "NoMatchingError" }
+        ]
+      }
+    },
+    {
+      "Identifier": "e0000001-0000-0000-0000-000000000005",
+      "Type": "GetParticipantInput",
+      "Parameters": {
+        "Text": "For sales inquiries, press 1. For support, press 2.",
+        "DTMFConfiguration": {
+          "InputTimeLimitSeconds": "8",
+          "FinishOnKey": "#",
+          "InactivityTimeLimitSeconds": "5"
+        },
+        "InputTimeLimitSeconds": "8"
+      },
+      "Transitions": {
+        "NextAction": "e0000001-0000-0000-0000-000000000011",
+        "Conditions": [
+          {
+            "NextAction": "e0000001-0000-0000-0000-000000000006",
+            "Condition": { "Operator": "Equals", "Operands": ["1"] }
+          },
+          {
+            "NextAction": "e0000001-0000-0000-0000-000000000007",
+            "Condition": { "Operator": "Equals", "Operands": ["2"] }
+          }
+        ],
+        "Errors": [
+          { "NextAction": "e0000001-0000-0000-0000-000000000011", "ErrorType": "InputTimeLimitExceeded" },
+          { "NextAction": "e0000001-0000-0000-0000-000000000011", "ErrorType": "NoMatchingCondition" },
+          { "NextAction": "e0000001-0000-0000-0000-000000000011", "ErrorType": "NoMatchingError" }
+        ]
+      }
+    },
+    {
+      "Identifier": "e0000001-0000-0000-0000-000000000006",
+      "Type": "UpdateContactTargetQueue",
+      "Parameters": {
+        "QueueId": "<YOUR_SALES_QUEUE_ARN>"
+      },
+      "Transitions": {
+        "NextAction": "e0000001-0000-0000-0000-000000000008",
+        "Errors": [
+          { "NextAction": "e0000001-0000-0000-0000-000000000012", "ErrorType": "NoMatchingError" }
+        ]
+      }
+    },
+    {
+      "Identifier": "e0000001-0000-0000-0000-000000000007",
+      "Type": "UpdateContactTargetQueue",
+      "Parameters": {
+        "QueueId": "<YOUR_SUPPORT_QUEUE_ARN>"
+      },
+      "Transitions": {
+        "NextAction": "e0000001-0000-0000-0000-000000000008",
+        "Errors": [
+          { "NextAction": "e0000001-0000-0000-0000-000000000012", "ErrorType": "NoMatchingError" }
+        ]
+      }
+    },
+    {
+      "Identifier": "e0000001-0000-0000-0000-000000000008",
+      "Type": "TransferContactToQueue",
+      "Parameters": {},
+      "Transitions": {
+        "NextAction": "e0000001-0000-0000-0000-000000000012",
+        "Errors": [
+          { "NextAction": "e0000001-0000-0000-0000-000000000012", "ErrorType": "QueueAtCapacity" },
+          { "NextAction": "e0000001-0000-0000-0000-000000000012", "ErrorType": "NoMatchingError" }
+        ]
+      }
+    },
+    {
+      "Identifier": "e0000001-0000-0000-0000-000000000010",
+      "Type": "MessageParticipant",
+      "Parameters": {
+        "Text": "申し訳ございません。おかけ直しください。"
+      },
+      "Transitions": {
+        "NextAction": "e0000001-0000-0000-0000-000000000012",
+        "Errors": [
+          { "NextAction": "e0000001-0000-0000-0000-000000000012", "ErrorType": "NoMatchingError" }
+        ]
+      }
+    },
+    {
+      "Identifier": "e0000001-0000-0000-0000-000000000011",
+      "Type": "MessageParticipant",
+      "Parameters": {
+        "Text": "We're sorry, please call back later."
+      },
+      "Transitions": {
+        "NextAction": "e0000001-0000-0000-0000-000000000012",
+        "Errors": [
+          { "NextAction": "e0000001-0000-0000-0000-000000000012", "ErrorType": "NoMatchingError" }
+        ]
+      }
+    },
+    {
+      "Identifier": "e0000001-0000-0000-0000-000000000012",
+      "Type": "DisconnectParticipant",
+      "Parameters": {},
+      "Transitions": {}
+    }
+  ],
+  "Metadata": {
+    "ActionMetadata": {
+      "e0000001-0000-0000-0000-000000000001": { "position": { "x": 100, "y": 300 } },
+      "e0000001-0000-0000-0000-000000000002": { "position": { "x": 400, "y": 100 } },
+      "e0000001-0000-0000-0000-000000000003": { "position": { "x": 400, "y": 500 } },
+      "e0000001-0000-0000-0000-000000000004": { "position": { "x": 700, "y": 100 } },
+      "e0000001-0000-0000-0000-000000000005": { "position": { "x": 700, "y": 500 } },
+      "e0000001-0000-0000-0000-000000000006": { "position": { "x": 1000, "y": 200 } },
+      "e0000001-0000-0000-0000-000000000007": { "position": { "x": 1000, "y": 400 } },
+      "e0000001-0000-0000-0000-000000000008": { "position": { "x": 1300, "y": 300 } },
+      "e0000001-0000-0000-0000-000000000010": { "position": { "x": 1000, "y": 0 } },
+      "e0000001-0000-0000-0000-000000000011": { "position": { "x": 1000, "y": 600 } },
+      "e0000001-0000-0000-0000-000000000012": { "position": { "x": 1600, "y": 300 } }
+    }
+  }
+}
