@@ -1,56 +1,92 @@
 # connect-blueprint
 
-Amazon Connect コンタクトフローを要件や設計図から自動生成する [OpenClaw](https://openclaw.io) スキル。
+> An Agent Skill for designing and generating Amazon Connect contact flows.
 
-## 機能
+## What this skill does
 
-- **モードA**: 要件ヒアリング → Mermaid設計図 → フローJSON → デプロイ
-- **モードB**: draw.io/Mermaid/画像 → フローJSON → デプロイ
+**connect-blueprint** gives AI agents the knowledge and tools to:
 
-## インストール
+- **Design flows from scratch** — gather requirements, check your Connect environment, generate a Mermaid diagram, then produce a deployable flow JSON
+- **Convert diagrams to flows** — turn draw.io XML, Mermaid diagrams, or screenshots into Amazon Connect flow JSON
+- **Deploy to AWS** — create or update contact flows via AWS CLI
+- **Auto-layout** — assign clean x/y coordinates using topological ordering (no more zigzag arrows)
 
-OpenClaw のスキルディレクトリにクローン：
+## Compatibility
 
+Works with any [Agent Skills](https://agentskills.io)-compatible agent, including:
+Claude Code, Cursor, Gemini CLI, Goose, Roo Code, and others.
+
+**Requirements:**
+- AWS CLI with a valid profile (`connect:*` permissions)
+- Python 3.8+
+
+## Usage
+
+### Mode A: Design from scratch
+
+The agent will:
+1. Ask about your call center's purpose, IVR options, queues, and Lambda integrations
+2. Check your Connect environment (available queues, prompts, Lambda functions)
+3. Generate a Mermaid diagram for your review
+4. Convert the approved diagram to flow JSON with auto-layout
+5. Deploy via AWS CLI
+
+### Mode B: Convert from diagram
+
+Provide a draw.io file, Mermaid diagram, or screenshot — the agent will parse it and generate flow JSON.
+
+## Installation
+
+### Claude Code
+Add to your project's `CLAUDE.md`, or install via:
 ```bash
-cd ~/.openclaw/skills/
-git clone https://github.com/ippei2480/connect-blueprint.git
+claude skills add https://github.com/ippei2480/connect-blueprint
 ```
 
-## 必要な環境
+### Other agents
+Download the skill and follow your agent's skill installation instructions.
 
-- AWS CLI（認証済みプロファイル）
-- Amazon Connect インスタンス
-- IAM権限: `connect:*`
-- Python 3.x（layout.py 用）
+## Mermaid notation
 
-## 使い方
+This skill uses a Connect-specific Mermaid notation where **node shapes map to ActionTypes**:
 
-OpenClaw に以下のように依頼：
+| Shape | Syntax | ActionType |
+|-------|--------|-----------|
+| Hexagon | `id{{"text"}}` | GetParticipantInput (IVR) |
+| Rounded rect | `id("text")` | MessageParticipant (play audio) |
+| Diamond | `id{"text"}` | Compare (condition branch) |
+| Double rect | `id[["text"]]` | TransferContactToQueue |
+| Parallelogram | `id[/"lambda:fn"/]` | InvokeLambdaFunction |
+| Plain rect | `id["key=value"]` | UpdateContactAttributes |
+| Stadium | `id(["text"])` | InvokeFlowModule |
+| Circle | `id(("end"))` | DisconnectParticipant |
 
-> 「Amazon Connect で新しいIVRフローを作りたい」
-> 「この設計図からConnectフローを生成して」
-> 「既存のフローを更新して」
+```mermaid
+graph LR
+  greeting(["Welcome module"])
+  menu{{"Main menu\nTimeout:8\nDTMF:1-2"}}
+  q1["📞 SupportQueue"]
+  transfer[["Transfer to queue"]]
+  end1(("Disconnect"))
 
-詳細は [SKILL.md](SKILL.md) を参照。
-
-## ファイル構成
-
+  greeting --> menu
+  menu -->|"Pressed 1"| q1
+  menu -->|"Pressed 2"| end1
+  menu -->|"Timeout"| end1
+  q1 --> transfer
+  transfer --> end1
 ```
-connect-blueprint/
-├── SKILL.md                          # スキル定義（OpenClawが読む）
-├── README.md                         # このファイル
-├── scripts/
-│   └── layout.py                     # フローJSON座標付与スクリプト
-├── references/
-│   ├── action_types.md               # ActionType リファレンス
-│   ├── flow_json_structure.md        # フローJSON構造仕様
-│   ├── mermaid_notation.md           # Mermaid記法ガイド
-│   ├── aws_cli_commands.md           # AWS CLIコマンド集
-│   └── layout_rules.md              # レイアウトルール
-├── templates/                        # テンプレート（今後追加）
-└── examples/                         # サンプルフロー（今後追加）
-```
 
-## ライセンス
+## Layout algorithm
+
+Positions are assigned automatically using a topological sort:
+- **Forward rule**: every transition increases the x coordinate
+- **NextAction (default)**: same y as parent
+- **Conditions[i]**: parent y + (i+1) × 200
+- **Errors**: below conditions
+
+Loops are detected via DFS and excluded from layout calculation.
+
+## License
 
 MIT
