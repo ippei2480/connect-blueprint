@@ -122,6 +122,50 @@ aws connect update-contact-flow-content \
 - `StartAction` は必ず1つ
 - 全Actionに `Transitions` 必須（`DisconnectParticipant` は空 `{}` でOK）
 
+## Validation
+
+デプロイ前に必ずバリデーションを実行する：
+
+```bash
+# ローカルバリデーション（JSON構造・参照整合性チェック）
+./scripts/validate.sh flow.json
+
+# AWS バリデーション（Connect APIによる完全チェック）
+./scripts/validate.sh flow.json --aws --instance-id $INSTANCE_ID --profile $PROFILE
+```
+
+## Examples
+
+`examples/` ディレクトリにサンプルフローあり（Mermaid図＋JSON付き）：
+
+| ディレクトリ | ユースケース |
+|-------------|-------------|
+| `business-hours-routing/` | 営業時間内外振り分け |
+| `callback-reservation/` | コールバック予約 |
+| `nps-survey/` | 顧客満足度アンケート（NPS） |
+| `vip-escalation/` | VIP顧客エスカレーション |
+| `multilingual/` | 多言語対応（日本語/英語） |
+| `inquiry-routing/` | 問い合わせ種別振り分け |
+
+## Troubleshooting
+
+### よくあるエラーと対処法
+
+| エラー | 原因 | 対処 |
+|--------|------|------|
+| `Invalid flow content` | JSON構造の不備 | `./scripts/validate.sh` でチェック |
+| `Position metadata in wrong location` | Action直下にMetadataを配置 | `Metadata.ActionMetadata.<id>.position` に移動 |
+| `StartAction not found` | StartActionのIDがActions内に存在しない | UUIDの一致を確認 |
+| `Queue not found` | キューARNが不正 | `aws connect list-queues` で正しいARNを取得 |
+| `Lambda function not associated` | LambdaがConnectに未連携 | Connect管理画面でLambda関数を追加 |
+| `Access denied` | IAM権限不足 | `connect:*` 権限をIAMポリシーに追加 |
+
+### layout.py がエラーになる場合
+
+- Python 3.8以上が必要
+- 標準ライブラリのみ使用（追加インストール不要）
+- 入力JSONが正しい構造か `validate.sh` で事前確認
+
 ## References
 
 - Action Types詳細: `references/action_types.md`
@@ -129,3 +173,4 @@ aws connect update-contact-flow-content \
 - Mermaid記法: `references/mermaid_notation.md`
 - AWS CLIコマンド: `references/aws_cli_commands.md`
 - レイアウトルール: `references/layout_rules.md`
+- エラーハンドリング: `references/error_handling_patterns.md`

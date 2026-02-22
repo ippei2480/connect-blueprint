@@ -77,6 +77,29 @@ graph LR
   transfer --> end1
 ```
 
+## Examples
+
+Ready-to-use sample flows with Mermaid diagrams and deployable JSON:
+
+| Example | Description |
+|---------|-------------|
+| [Business Hours Routing](examples/business-hours-routing/) | 営業時間内外の振り分け |
+| [Callback Reservation](examples/callback-reservation/) | 待ち時間が長い場合のコールバック予約 |
+| [NPS Survey](examples/nps-survey/) | 通話後の顧客満足度アンケート |
+| [VIP Escalation](examples/vip-escalation/) | VIP顧客の優先キュー振り分け |
+| [Multilingual](examples/multilingual/) | 日本語/英語の言語選択対応 |
+| [Inquiry Routing](examples/inquiry-routing/) | 問い合わせ種別（請求・技術・契約等）振り分け |
+
+## Validation
+
+```bash
+# Local validation (JSON structure, reference integrity)
+./scripts/validate.sh flow.json
+
+# AWS validation (Connect API check)
+./scripts/validate.sh flow.json --aws --instance-id $INSTANCE_ID --profile $PROFILE
+```
+
 ## Layout algorithm
 
 Positions are assigned automatically using a topological sort:
