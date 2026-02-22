@@ -72,18 +72,32 @@ Mermaidからフロー構造を解析してJSON（Actions配列 + Transitions）
 python3 scripts/layout.py <flow.json>
 ```
 
-### Step 4: デプロイ
+### Step 4: Validate & Deploy
 
+**IMPORTANT: Always validate before deploying. Never skip this step.**
+
+#### Validate (required)
 ```bash
-# 新規作成
+aws connect validate-contact-flow-content \
+  --instance-id $INSTANCE_ID \
+  --type CONTACT_FLOW \
+  --content "$(cat flow.json)" \
+  --profile $PROFILE
+```
+If validation returns errors, fix the flow JSON and re-validate before proceeding.
+Only deploy after validation passes with no errors.
+
+#### Deploy
+```bash
+# Create new flow
 aws connect create-contact-flow \
   --instance-id $INSTANCE_ID \
-  --name "フロー名" \
+  --name "Flow Name" \
   --type CONTACT_FLOW \
   --content "$(cat flow.json)" \
   --profile $PROFILE
 
-# 更新
+# Update existing flow
 aws connect update-contact-flow-content \
   --instance-id $INSTANCE_ID \
   --contact-flow-id $FLOW_ID \

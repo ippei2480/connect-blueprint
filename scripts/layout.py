@@ -38,6 +38,50 @@ def get_all_next(action, id_to_action):
     return [nid for nid, _, _ in get_edges(action) if nid in id_to_action]
 
 
+def resolve_overlaps(positions):
+    """
+    ブロックの重なりを解消する。
+    同じx座標に複数ノードがある場合、y方向に十分な間隔を確保する。
+    異なるx座標間でも重なりが発生する場合はy方向にずらす。
+    """
+    BLOCK_WIDTH = 210
+    BLOCK_HEIGHT = 160
+    MARGIN_X = 20
+    MARGIN_Y = 20
+    MIN_X_SPACING = BLOCK_WIDTH + MARGIN_X   # 230
+    MIN_Y_SPACING = BLOCK_HEIGHT + MARGIN_Y  # 180
+
+    changed = True
+    max_iter = 200
+    iteration = 0
+
+    while changed and iteration < max_iter:
+        changed = False
+        iteration += 1
+
+        node_ids = list(positions.keys())
+        for i in range(len(node_ids)):
+            for j in range(i + 1, len(node_ids)):
+                id1, id2 = node_ids[i], node_ids[j]
+                pos1, pos2 = positions[id1], positions[id2]
+
+                dx = abs(pos1['x'] - pos2['x'])
+                dy = abs(pos1['y'] - pos2['y'])
+
+                # 重なり判定
+                if dx < MIN_X_SPACING and dy < MIN_Y_SPACING:
+                    # 重なっている → y方向にずらす（y が大きい方をさらに下へ）
+                    if pos2['y'] >= pos1['y']:
+                        needed = MIN_Y_SPACING - dy
+                        positions[id2]['y'] += needed
+                    else:
+                        needed = MIN_Y_SPACING - dy
+                        positions[id1]['y'] += needed
+                    changed = True
+
+    return positions
+
+
 def layout(flow):
     actions = flow['Actions']
     id_to_action = {a['Identifier']: a for a in actions}
@@ -110,7 +154,7 @@ def layout(flow):
         elif etype == 'error':
             node_y[aid] = parent_y + (num_cond + eidx + 1) * Y_STEP
 
-    # 座標確定 & 書き込み
+    # 座標確定
     positions = {}
     for a in actions:
         aid = a['Identifier']
@@ -118,6 +162,9 @@ def layout(flow):
             'x': X_BASE + depth.get(aid, 0) * X_STEP,
             'y': node_y.get(aid, Y_BASE)
         }
+
+    # 重なり解消
+    positions = resolve_overlaps(positions)
 
     if 'Metadata' not in flow:
         flow['Metadata'] = {}
