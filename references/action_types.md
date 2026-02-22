@@ -277,3 +277,112 @@ Lambda関数を呼び出す。
   }
 }
 ```
+
+**Parameters:**
+- `HoursOfOperationId` (string, optional) — 指定しない場合はキューに設定された営業時間を使用
+
+---
+
+## UpdateContactRecordingBehavior
+
+通話録音の開始/停止を制御する。
+
+```json
+{
+  "Identifier": "uuid",
+  "Type": "UpdateContactRecordingBehavior",
+  "Parameters": {
+    "RecordingBehavior": {
+      "RecordedParticipants": ["Agent", "Customer"]
+    }
+  },
+  "Transitions": {
+    "NextAction": "next-uuid",
+    "Errors": [
+      { "NextAction": "error-uuid", "ErrorType": "NoMatchingError" }
+    ]
+  }
+}
+```
+
+**Parameters:**
+- `RecordedParticipants` — 録音対象（`["Agent"]`, `["Customer"]`, `["Agent", "Customer"]`）
+- 録音停止は `"RecordedParticipants": []` を指定
+
+---
+
+## SetVoice
+
+テキスト読み上げの音声を設定する。
+
+```json
+{
+  "Identifier": "uuid",
+  "Type": "SetVoice",
+  "Parameters": {
+    "GlobalVoice": "Mizuki"
+  },
+  "Transitions": {
+    "NextAction": "next-uuid",
+    "Errors": [
+      { "NextAction": "error-uuid", "ErrorType": "NoMatchingError" }
+    ]
+  }
+}
+```
+
+**Parameters:**
+- `GlobalVoice` — Amazon Polly の音声名（日本語: `Mizuki`, `Takumi`、英語: `Joanna`, `Matthew` 等）
+
+---
+
+## SetLoggingBehavior
+
+コンタクトフローのログ出力を有効/無効にする。
+
+```json
+{
+  "Identifier": "uuid",
+  "Type": "SetLoggingBehavior",
+  "Parameters": {
+    "LoggingBehavior": "Enable"
+  },
+  "Transitions": {
+    "NextAction": "next-uuid",
+    "Errors": [
+      { "NextAction": "error-uuid", "ErrorType": "NoMatchingError" }
+    ]
+  }
+}
+```
+
+**Parameters:**
+- `LoggingBehavior` — `"Enable"` or `"Disable"`
+
+---
+
+## TransferToPhoneNumber
+
+外部電話番号に転送する。
+
+```json
+{
+  "Identifier": "uuid",
+  "Type": "TransferToPhoneNumber",
+  "Parameters": {
+    "PhoneNumber": "+81312345678",
+    "ContactFlowId": "optional-whisper-flow-arn"
+  },
+  "Transitions": {
+    "NextAction": "after-uuid",
+    "Errors": [
+      { "NextAction": "error-uuid", "ErrorType": "CallFailed" },
+      { "NextAction": "error-uuid", "ErrorType": "NoMatchingError" }
+    ]
+  }
+}
+```
+
+**Parameters:**
+- `PhoneNumber` — E.164形式の電話番号
+- `ContactFlowId` (optional) — ウィスパーフローのARN
