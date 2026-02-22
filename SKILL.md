@@ -1,12 +1,16 @@
 ---
 name: connect-blueprint
 description: >
-  Amazon Connect コンタクトフローを設計・生成・デプロイするスキル。
-  Use when: (1) 要件からAmazon Connectのコンタクトフローを新規設計する,
-  (2) draw.io/Mermaid/画像の設計図からフローJSONを生成する,
-  (3) フローをAWS環境にデプロイする,
-  (4) 既存フローを修正・更新する。
-  Covers: IVR設計, キュー振り分け, Lambda連携, 営業時間分岐, フローモジュール。
+  Design and generate Amazon Connect contact flow JSON from requirements or diagrams.
+  Use when: (1) designing a new contact flow from scratch by gathering requirements,
+  (2) converting draw.io/Mermaid diagrams or images into flow JSON,
+  (3) deploying flows to AWS via CLI, (4) updating existing flows.
+  Covers IVR menus, queue routing, Lambda integration, business hours checks, and flow modules.
+license: MIT
+compatibility: Requires AWS CLI with a valid profile (connect:* permissions). Python 3.8+ for layout.py.
+metadata:
+  author: ippei2480
+  version: "0.1.0"
 ---
 
 # connect-blueprint
