@@ -190,6 +190,10 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     path = args.flow_json
+    if not path.endswith('.json'):
+        print("Error: File must have .json extension", file=sys.stderr)
+        sys.exit(1)
+
     with open(path) as f:
         flow = json.load(f)
 

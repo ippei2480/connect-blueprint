@@ -53,13 +53,20 @@ if [[ -z "$INSTANCE_ID" ]]; then
   exit 1
 fi
 
+if [[ ! "$INSTANCE_ID" =~ ^[a-z0-9-]+$ ]]; then
+  echo -e "${RED}Error: Invalid --instance-id format${NC}"
+  exit 1
+fi
+
+if [[ -n "$PROFILE" && ! "$PROFILE" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+  echo -e "${RED}Error: Invalid --profile format${NC}"
+  exit 1
+fi
+
 if [[ ! -f "$FLOW_FILE" ]]; then
   echo -e "${RED}Error: File not found: $FLOW_FILE${NC}"
   exit 1
 fi
-
-PROFILE_OPT=""
-[[ -n "$PROFILE" ]] && PROFILE_OPT="--profile $PROFILE"
 
 # Step 1: Local validation
 if ! $SKIP_VALIDATE; then
@@ -77,11 +84,14 @@ fi
 
 # Step 3: AWS validation
 echo "Step 3: AWSバリデーション..."
-aws connect validate-contact-flow-content \
-  --instance-id "$INSTANCE_ID" \
-  --type CONTACT_FLOW \
-  --content "$(cat "$FLOW_FILE")" \
-  $PROFILE_OPT
+aws_validate_args=(
+  connect validate-contact-flow-content
+  --instance-id "$INSTANCE_ID"
+  --type CONTACT_FLOW
+  --content "$(cat "$FLOW_FILE")"
+)
+[[ -n "$PROFILE" ]] && aws_validate_args+=(--profile "$PROFILE")
+aws "${aws_validate_args[@]}"
 echo -e "${GREEN}✓${NC} AWSバリデーション通過"
 echo ""
 
@@ -93,12 +103,15 @@ case "$MODE" in
       echo -e "${RED}Error: --name is required for create${NC}"
       exit 1
     fi
-    RESULT=$(aws connect create-contact-flow \
-      --instance-id "$INSTANCE_ID" \
-      --name "$FLOW_NAME" \
-      --type CONTACT_FLOW \
-      --content "$(cat "$FLOW_FILE")" \
-      $PROFILE_OPT)
+    aws_create_args=(
+      connect create-contact-flow
+      --instance-id "$INSTANCE_ID"
+      --name "$FLOW_NAME"
+      --type CONTACT_FLOW
+      --content "$(cat "$FLOW_FILE")"
+    )
+    [[ -n "$PROFILE" ]] && aws_create_args+=(--profile "$PROFILE")
+    RESULT=$(aws "${aws_create_args[@]}")
     echo -e "${GREEN}✓${NC} フロー作成完了"
     echo "$RESULT" | python3 -m json.tool
     ;;
@@ -107,11 +120,18 @@ case "$MODE" in
       echo -e "${RED}Error: --flow-id is required for update${NC}"
       exit 1
     fi
-    aws connect update-contact-flow-content \
-      --instance-id "$INSTANCE_ID" \
-      --contact-flow-id "$FLOW_ID" \
-      --content "$(cat "$FLOW_FILE")" \
-      $PROFILE_OPT
+    if [[ ! "$FLOW_ID" =~ ^[a-z0-9-]+$ ]]; then
+      echo -e "${RED}Error: Invalid --flow-id format${NC}"
+      exit 1
+    fi
+    aws_update_args=(
+      connect update-contact-flow-content
+      --instance-id "$INSTANCE_ID"
+      --contact-flow-id "$FLOW_ID"
+      --content "$(cat "$FLOW_FILE")"
+    )
+    [[ -n "$PROFILE" ]] && aws_update_args+=(--profile "$PROFILE")
+    aws "${aws_update_args[@]}"
     echo -e "${GREEN}✓${NC} フロー更新完了 (Flow ID: $FLOW_ID)"
     ;;
   *)

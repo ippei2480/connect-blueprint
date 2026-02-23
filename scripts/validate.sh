@@ -155,10 +155,17 @@ if $AWS_MODE; then
   echo "Running AWS validation..."
   if [[ -z "$INSTANCE_ID" ]]; then
     fail "AWS validation requires --instance-id"
+  elif [[ ! "$INSTANCE_ID" =~ ^[a-z0-9-]+$ ]]; then
+    fail "Invalid --instance-id format"
   else
-    AWS_CMD="aws connect validate-contact-flow-content --instance-id $INSTANCE_ID --type CONTACT_FLOW --content"
-    [[ -n "$PROFILE" ]] && AWS_CMD="$AWS_CMD --profile $PROFILE"
-    if $AWS_CMD "$(cat "$FLOW_FILE")" 2>&1; then
+    aws_args=(
+      connect validate-contact-flow-content
+      --instance-id "$INSTANCE_ID"
+      --type CONTACT_FLOW
+      --content "$(cat "$FLOW_FILE")"
+    )
+    [[ -n "$PROFILE" ]] && aws_args+=(--profile "$PROFILE")
+    if aws "${aws_args[@]}" 2>&1; then
       pass "AWS validation passed"
     else
       fail "AWS validation failed"

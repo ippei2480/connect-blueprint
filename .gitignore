@@ -5,3 +5,10 @@ __pycache__/
 *.json
 !templates/**/*.json
 !examples/**/*.json
+.venv/
+venv/
+*.log
+*.tmp
+.DS_Store
+dist/
+build/

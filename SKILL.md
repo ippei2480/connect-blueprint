@@ -122,6 +122,28 @@ aws connect update-contact-flow-content \
 - `StartAction` は必ず1つ
 - 全Actionに `Transitions` 必須（`DisconnectParticipant` は空 `{}` でOK）
 
+## Security Rules
+
+### デプロイ操作の安全ガード
+- `scripts/deploy.sh` の実行、または `aws connect create-contact-flow` / `aws connect update-contact-flow-content` コマンドの実行前に、**必ずユーザーの明示的な承認を得ること**
+- AWS バリデーション（`--aws` フラグ付きの `validate.sh`）も AWS API を呼び出すため、実行前にユーザーに確認すること
+- `.env` ファイルや AWS クレデンシャルファイル（`~/.aws/credentials` 等）を読み取らないこと
+
+### 安全な操作（確認不要）
+- `scripts/validate.sh <file>`（`--aws` フラグなし）によるローカルバリデーション
+- `python3 scripts/layout.py <file>` によるレイアウト座標付与
+- フローJSONの作成・編集
+- テンプレートの参照・コピー
+
+### テンプレートとプレースホルダー
+- テンプレートやサンプルの `<YOUR_XXX_ARN>` プレースホルダーを実際の ARN に置き換える際は、ユーザーから提供された値のみ使用すること
+- 推測や仮の値で ARN を埋めないこと
+
+### コーディング規約
+- シェルスクリプト: 変数は必ずダブルクォートで囲む。AWS CLI 引数の組み立てには bash 配列を使用する
+- Python: 標準ライブラリのみ使用（外部パッケージ不可）
+- JSON: テンプレートでは実際の ARN/ID を使用せず `<YOUR_XXX>` プレースホルダーを使う
+
 ## Validation
 
 デプロイ前に必ずバリデーションを実行する：
