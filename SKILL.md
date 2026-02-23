@@ -76,18 +76,18 @@ python3 scripts/layout.py <flow.json>
 
 **IMPORTANT: Always validate before deploying. Never skip this step.**
 
-#### Validate (required)
+#### ローカルバリデーション (required)
 ```bash
-aws connect validate-contact-flow-content \
-  --instance-id $INSTANCE_ID \
-  --type CONTACT_FLOW \
-  --content "$(cat flow.json)" \
-  --profile $PROFILE
+./scripts/validate.sh flow.json
 ```
 If validation returns errors, fix the flow JSON and re-validate before proceeding.
 Only deploy after validation passes with no errors.
 
 #### Deploy
+
+> **Note:** Connect API は `create-contact-flow` / `update-contact-flow-content` 実行時に
+> 自動でフロー内容をバリデーションする（デフォルトの `--status PUBLISHED`）。
+> バリデーション失敗時は `InvalidContactFlowException` が返される。
 ```bash
 # Create new flow
 aws connect create-contact-flow \
@@ -126,11 +126,11 @@ aws connect update-contact-flow-content \
 
 ### デプロイ操作の安全ガード
 - `scripts/deploy.sh` の実行、または `aws connect create-contact-flow` / `aws connect update-contact-flow-content` コマンドの実行前に、**必ずユーザーの明示的な承認を得ること**
-- AWS バリデーション（`--aws` フラグ付きの `validate.sh`）も AWS API を呼び出すため、実行前にユーザーに確認すること
+- デプロイ時に Connect API が自動でバリデーションを実行する（`--status PUBLISHED`）。`InvalidContactFlowException` が返された場合はフローJSONを修正して再デプロイすること
 - `.env` ファイルや AWS クレデンシャルファイル（`~/.aws/credentials` 等）を読み取らないこと
 
 ### 安全な操作（確認不要）
-- `scripts/validate.sh <file>`（`--aws` フラグなし）によるローカルバリデーション
+- `scripts/validate.sh <file>` によるローカルバリデーション
 - `python3 scripts/layout.py <file>` によるレイアウト座標付与
 - フローJSONの作成・編集
 - テンプレートの参照・コピー
@@ -146,15 +146,16 @@ aws connect update-contact-flow-content \
 
 ## Validation
 
-デプロイ前に必ずバリデーションを実行する：
+デプロイ前に必ずローカルバリデーションを実行する：
 
 ```bash
 # ローカルバリデーション（JSON構造・参照整合性チェック）
 ./scripts/validate.sh flow.json
-
-# AWS バリデーション（Connect APIによる完全チェック）
-./scripts/validate.sh flow.json --aws --instance-id $INSTANCE_ID --profile $PROFILE
 ```
+
+> **Note:** 純粋な「バリデーションだけ」の Connect API は存在しない。
+> デプロイ時（`create-contact-flow` / `update-contact-flow-content`）に Connect が自動でバリデーションを実行し、
+> 問題があれば `InvalidContactFlowException` を返す。
 
 ## Examples
 

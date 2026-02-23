@@ -1,12 +1,9 @@
 #!/usr/bin/env bash
 # validate.sh — Amazon Connect フローJSONのローカルバリデーション
-# Usage: ./scripts/validate.sh <flow.json> [--aws --instance-id <ID> --profile <PROFILE>]
+# Usage: ./scripts/validate.sh <flow.json>
 #
 # ローカルチェック:
 #   - JSON構文 / Version / StartAction / 遷移先参照整合性 / UUID形式 / DisconnectParticipant
-#
-# AWS バリデーション（--aws オプション）:
-#   - aws connect validate-contact-flow-content を実行
 
 set -euo pipefail
 
@@ -20,23 +17,17 @@ fail() { echo -e "${RED}✗${NC} $1"; ERRORS=$((ERRORS + 1)); }
 warn() { echo -e "${YELLOW}⚠${NC} $1"; }
 
 ERRORS=0
-AWS_MODE=false
-INSTANCE_ID=""
-PROFILE=""
 FLOW_FILE=""
 
 while [[ $# -gt 0 ]]; do
   case $1 in
-    --aws) AWS_MODE=true; shift ;;
-    --instance-id) INSTANCE_ID="$2"; shift 2 ;;
-    --profile) PROFILE="$2"; shift 2 ;;
     -*) echo "Unknown option: $1"; exit 1 ;;
     *) FLOW_FILE="$1"; shift ;;
   esac
 done
 
 if [[ -z "$FLOW_FILE" ]]; then
-  echo "Usage: $0 <flow.json> [--aws --instance-id <ID> --profile <PROFILE>]"
+  echo "Usage: $0 <flow.json>"
   exit 1
 fi
 
@@ -148,27 +139,3 @@ else:
     print(f"{RED}{errors} error(s) found.{NC}")
     sys.exit(1)
 PYEOF
-
-# AWS validation
-if $AWS_MODE; then
-  echo "---"
-  echo "Running AWS validation..."
-  if [[ -z "$INSTANCE_ID" ]]; then
-    fail "AWS validation requires --instance-id"
-  elif [[ ! "$INSTANCE_ID" =~ ^[a-z0-9-]+$ ]]; then
-    fail "Invalid --instance-id format"
-  else
-    aws_args=(
-      connect validate-contact-flow-content
-      --instance-id "$INSTANCE_ID"
-      --type CONTACT_FLOW
-      --content "$(cat "$FLOW_FILE")"
-    )
-    [[ -n "$PROFILE" ]] && aws_args+=(--profile "$PROFILE")
-    if aws "${aws_args[@]}" 2>&1; then
-      pass "AWS validation passed"
-    else
-      fail "AWS validation failed"
-    fi
-  fi
-fi

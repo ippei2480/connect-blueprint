@@ -38,11 +38,8 @@ graph LR
 
 1. Connect管理画面でオペレーション時間（Hours of Operation）を設定
 2. `flow.json` 内のキューARNとオペレーション時間ARNを自分の環境に合わせて変更
-3. デプロイ前にバリデーション:
+3. デプロイ前にローカルバリデーション:
    ```bash
-   aws connect validate-contact-flow-content \
-     --instance-id $INSTANCE_ID \
-     --type CONTACT_FLOW \
-     --content "$(cat flow.json)" \
-     --profile $PROFILE
+   ./scripts/validate.sh flow.json
    ```
+   > デプロイ時に Connect API が自動でバリデーションを実行します。失敗時は `InvalidContactFlowException` が返されます。
