@@ -8,7 +8,8 @@
 #   # 既存更新
 #   ./scripts/deploy.sh update <flow.json> --flow-id <FLOW_ID> --instance-id <ID> --profile <PROFILE>
 #
-# バリデーション → レイアウト → デプロイの3ステップを自動実行する。
+# ローカルバリデーション → レイアウト → デプロイの3ステップを自動実行する。
+# デプロイ時に Connect API が自動でフロー内容をバリデーションする（InvalidContactFlowException で失敗通知）。
 
 set -euo pipefail
 
@@ -82,21 +83,10 @@ if ! $SKIP_LAYOUT; then
   echo ""
 fi
 
-# Step 3: AWS validation
-echo "Step 3: AWSバリデーション..."
-aws_validate_args=(
-  connect validate-contact-flow-content
-  --instance-id "$INSTANCE_ID"
-  --type CONTACT_FLOW
-  --content "$(cat "$FLOW_FILE")"
-)
-[[ -n "$PROFILE" ]] && aws_validate_args+=(--profile "$PROFILE")
-aws "${aws_validate_args[@]}"
-echo -e "${GREEN}✓${NC} AWSバリデーション通過"
-echo ""
-
-# Step 4: Deploy
-echo "Step 4: デプロイ..."
+# Step 3: Deploy
+# Note: Connect API validates flow content automatically on create/update (--status PUBLISHED).
+#       InvalidContactFlowException is returned if validation fails.
+echo "Step 3: デプロイ..."
 case "$MODE" in
   create)
     if [[ -z "$FLOW_NAME" ]]; then
@@ -111,9 +101,14 @@ case "$MODE" in
       --content "$(cat "$FLOW_FILE")"
     )
     [[ -n "$PROFILE" ]] && aws_create_args+=(--profile "$PROFILE")
-    RESULT=$(aws "${aws_create_args[@]}")
-    echo -e "${GREEN}✓${NC} フロー作成完了"
-    echo "$RESULT" | python3 -m json.tool
+    if RESULT=$(aws "${aws_create_args[@]}" 2>&1); then
+      echo -e "${GREEN}✓${NC} フロー作成完了"
+      echo "$RESULT" | python3 -m json.tool
+    else
+      echo -e "${RED}✗${NC} フロー作成失敗（InvalidContactFlowException の場合はフローJSONを修正してください）"
+      echo "$RESULT"
+      exit 1
+    fi
     ;;
   update)
     if [[ -z "$FLOW_ID" ]]; then
@@ -131,8 +126,12 @@ case "$MODE" in
       --content "$(cat "$FLOW_FILE")"
     )
     [[ -n "$PROFILE" ]] && aws_update_args+=(--profile "$PROFILE")
-    aws "${aws_update_args[@]}"
-    echo -e "${GREEN}✓${NC} フロー更新完了 (Flow ID: $FLOW_ID)"
+    if aws "${aws_update_args[@]}" 2>&1; then
+      echo -e "${GREEN}✓${NC} フロー更新完了 (Flow ID: $FLOW_ID)"
+    else
+      echo -e "${RED}✗${NC} フロー更新失敗（InvalidContactFlowException の場合はフローJSONを修正してください）"
+      exit 1
+    fi
     ;;
   *)
     echo -e "${RED}Error: Mode must be 'create' or 'update'${NC}"
