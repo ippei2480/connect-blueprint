@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.5.0] - 2026-02-24
+
+### Added
+- `scripts/validate.sh` に `--api` フラグ追加: `create-contact-flow --status SAVED` でConnect APIをバリデーターとして活用し、ローカルチェックでは検出できないActionType固有のパラメータ制約をデプロイ前に検出可能に
+- `scripts/validate.sh` に `--instance-id`/`--profile` オプション追加
+- `scripts/validate.sh` に DTMFConfiguration 内の `InputTimeLimitSeconds` 検出チェック追加
+- `SKILL.md` Step 4 に APIバリデーションセクション追加
+
+### Fixed
+- `references/action_types.md`: `UpdateContactRecordingBehavior` の Errors を「なし」に修正
+- `references/action_types.md`: `GetParticipantInput` の `StoreInput=True` 時の正確な仕様・InputValidation例を追加、DTMFConfiguration から `InputTimeLimitSeconds` を削除
+- `references/flow_json_structure.md`: Transitions仕様テーブル修正
+
 ## [0.4.0] - 2026-02-24
 
 ### Changed
