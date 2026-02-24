@@ -10,7 +10,7 @@ license: MIT
 compatibility: Requires AWS CLI with a valid profile (connect:* permissions). Python 3.8+ for layout.py.
 metadata:
   author: ippei2480
-  version: "0.4.0"
+  version: "0.6.0"
 ---
 
 # connect-blueprint
@@ -74,10 +74,19 @@ Loop で実現できない場合のみ `UpdateContactAttributes` + `Compare` に
 
 Mermaidからフロー構造を解析してJSON（Actions配列 + Transitions）を生成する。
 `references/flow_json_structure.md` の構造仕様に従う。
-`references/action_types.md` で各ActionTypeのパラメータを確認する。
 
 **フローの最初のアクションは必ず `UpdateFlowLoggingBehavior` とする。**
 `StartAction` に `UpdateFlowLoggingBehavior` のIDを設定し、その `NextAction` を本来のエントリーアクションにする。
+
+#### AWS MCP Parameter Validation
+
+各ActionTypeのパラメータを設定する際、`references/action_types.md` の共通ルールを確認した上で、AWS MCP で公式ドキュメントを参照してパラメータの正確性を保証する：
+
+1. `references/action_types.md` の AWS Docs パス対応テーブルから該当URLパスを取得
+2. `aws___read_documentation` でパラメータ仕様を確認
+3. ドキュメントに基づいてパラメータを設定する
+
+> **Why:** ローカルリファレンスはパラメータの概要のみ記載。正確なフィールド名・型・制約は AWS 公式ドキュメントが信頼できるソース。
 
 **position付与:**
 ```bash
@@ -109,13 +118,23 @@ Only deploy after validation passes with no errors.
 3. 推測による修正は避ける
 
 #### Deploy
+
 ```bash
-# Create new flow
+# Create new flow（SAVED → ACTIVE の2ステップ）
+# Step 1: SAVED状態で作成
 aws connect create-contact-flow \
   --instance-id $INSTANCE_ID \
   --name "Flow Name" \
   --type CONTACT_FLOW \
   --content "$(cat flow.json)" \
+  --status SAVED \
+  --profile $PROFILE
+
+# Step 2: ACTIVE状態に変更（$FLOW_ID は Step 1 の出力から取得）
+aws connect update-contact-flow-metadata \
+  --instance-id $INSTANCE_ID \
+  --contact-flow-id $FLOW_ID \
+  --contact-flow-state ACTIVE \
   --profile $PROFILE
 
 # Update existing flow
@@ -125,6 +144,8 @@ aws connect update-contact-flow-content \
   --content "$(cat flow.json)" \
   --profile $PROFILE
 ```
+
+> **Note:** `create-contact-flow` をデフォルト（PUBLISHED）で実行すると `InvalidContactFlowException` になる場合がある。`--status SAVED` → `update-contact-flow-metadata --contact-flow-state ACTIVE` の2ステップ方式を使用する。
 
 ## Mode B: Convert from Diagram
 
@@ -145,22 +166,21 @@ aws connect update-contact-flow-content \
 - 全Actionに `Transitions` 必須（`DisconnectParticipant` は空 `{}` でOK）
 - **Conditions 必須 ActionType**: `Loop`（ContinueLooping + DoneLooping）、`CheckHoursOfOperation`（True + False）、`Compare`（最低1条件）
 - **StoreInput 使い分け**: IVRメニュー（選択肢分岐）は `StoreInput: "False"` + Conditions、自由入力（番号保存）は `StoreInput: "True"` + Conditions なし
+- **サンプルフローは提供しない** — 要件に応じてゼロから設計すること
 
 ## Security Rules
 
 ### デプロイ操作の安全ガード
 - `scripts/deploy.sh` の実行、または `aws connect create-contact-flow` / `aws connect update-contact-flow-content` コマンドの実行前に、**必ずユーザーの明示的な承認を得ること**
-- デプロイ時に Connect API が自動でバリデーションを実行する（`--status PUBLISHED`）。`InvalidContactFlowException` が返された場合はフローJSONを修正して再デプロイすること
 - `.env` ファイルや AWS クレデンシャルファイル（`~/.aws/credentials` 等）を読み取らないこと
 
 ### 安全な操作（確認不要）
 - `scripts/validate.sh <file>` によるローカルバリデーション（`--api` オプション含む。下書き保存は自動削除される）
 - `python3 scripts/layout.py <file>` によるレイアウト座標付与
 - フローJSONの作成・編集
-- サンプルフローの参照
 
 ### プレースホルダー
-- サンプルの `<YOUR_XXX_ARN>` プレースホルダーを実際の ARN に置き換える際は、ユーザーから提供された値のみ使用すること
+- `<YOUR_XXX_ARN>` プレースホルダーを実際の ARN に置き換える際は、ユーザーから提供された値のみ使用すること
 - 推測や仮の値で ARN を埋めないこと
 
 ### コーディング規約
@@ -170,29 +190,31 @@ aws connect update-contact-flow-content \
 
 ## Validation
 
-デプロイ前に必ずバリデーションを実行する：
+3層バリデーション構造でフローの品質を保証する：
+
+### Layer 1: AWS MCP パラメータ検証
+
+フローJSON生成時に AWS MCP (`aws___read_documentation`) で各ActionTypeのパラメータ仕様を確認する。
+
+- `references/action_types.md` の AWS Docs パス対応テーブルからURLパスを取得
+- パラメータ名・型・必須/任意をドキュメントで照合
+- 推測によるパラメータ設定を回避
+
+### Layer 2: ローカルバリデーション
 
 ```bash
-# ローカルバリデーション（JSON構造・参照整合性チェック）
 ./scripts/validate.sh flow.json
+```
 
-# APIバリデーション（ローカル + Connect API による完全バリデーション）
+JSON構造・遷移参照整合性・ActionType制約・孤立ブロック・デッドエンドを検出する。
+
+### Layer 3: Connect API バリデーション
+
+```bash
 ./scripts/validate.sh --api --instance-id $INSTANCE_ID --profile $PROFILE flow.json
 ```
 
-> **推奨:** APIバリデーション（`--api`）を使用する。ローカルチェックでは検出できない
-> ActionType固有のパラメータ制約やErrors/Conditionsの妥当性をConnect APIが検証する。
-> `--status SAVED`（下書き保存）で作成するため本番に影響しない。
-
-## Examples
-
-`examples/` ディレクトリにサンプルフローあり（Mermaid図＋JSON付き）：
-
-| ディレクトリ | ユースケース |
-|-------------|-------------|
-| `business-hours-routing/` | 営業時間内外振り分け（CheckHoursOfOperation, IVR, キュー転送） |
-| `inquiry-routing/` | 問い合わせ種別振り分け（4択IVR, UpdateContactAttributes, 複数キュー） |
-| `nps-survey/` | 顧客満足度アンケート（DTMF 0-9, InvokeLambdaFunction） |
+ローカルチェックでは検出できないActionType固有のパラメータ制約やErrors/Conditionsの妥当性をConnect APIが検証する。`--status SAVED`（下書き保存）で作成するため本番に影響しない。
 
 ## Troubleshooting
 
@@ -209,12 +231,14 @@ aws connect update-contact-flow-content \
 | `Conditions required for Loop` | Loop に ContinueLooping/DoneLooping が不足 | 両方の Conditions を追加 |
 | `StoreInput + Conditions conflict` | GetParticipantInput で StoreInput=True と Conditions を併用 | StoreInput=True なら Conditions を削除、IVRメニューなら StoreInput を削除 |
 | `Missing True/False conditions` | CheckHoursOfOperation に True/False の Conditions が不足 | True と False の両方の Conditions を追加 |
+| `InvalidContactFlowException on create` | `create-contact-flow` デフォルト（PUBLISHED）で失敗 | `--status SAVED` → `update-contact-flow-metadata --contact-flow-state ACTIVE` の2ステップで作成 |
 
 ### エラー調査の手順
 
 1. まず `aws-mcp` (`aws___search_documentation` / `aws___read_documentation`) で AWS 公式ドキュメントを調査する
-2. AWS公式ドキュメントに基づいて修正を行う
-3. 推測による修正は避け、必ず公式ドキュメントで裏付けを取る
+2. `references/action_types.md` の AWS Docs パス対応テーブルで該当ActionTypeのドキュメントパスを確認
+3. AWS公式ドキュメントに基づいて修正を行う
+4. 推測による修正は避け、必ず公式ドキュメントで裏付けを取る
 
 ### layout.py がエラーになる場合
 

@@ -43,7 +43,7 @@
 |-----------|------|------|------|
 | `Identifier` | string | ✅ | UUID v4 形式の一意識別子 |
 | `Type` | string | ✅ | ActionType（`references/action_types.md` 参照） |
-| `Parameters` | object | ✅ | ActionType固有のパラメータ |
+| `Parameters` | object | ✅ | ActionType固有のパラメータ（AWS MCPで仕様を確認） |
 | `Transitions` | object | ✅ | 遷移先の定義（`DisconnectParticipant` は `{}` でOK） |
 
 ## Transitions
@@ -73,6 +73,8 @@
 - `Conditions` — 条件分岐（DTMF値、属性比較など）
 - `Errors` — エラー遷移（`NoMatchingError`, `NoMatchingCondition`, `QueueAtCapacity` 等）
 
+> **Note:** ActionType別のTransitions仕様（どのフィールドが使用可/不可か）は AWS MCP (`aws___read_documentation`) で各ActionTypeの公式ドキュメントを参照してください。対応URLパスは `references/action_types.md` に記載しています。
+
 ## Metadata
 
 ```json
@@ -89,32 +91,6 @@
 
 ⚠️ **重要**: `position` は必ず `Metadata.ActionMetadata.<id>.position` に配置する。
 Action オブジェクト直下の `Metadata` は Connect API が拒否する。
-
-## ActionType別 Transitions 仕様
-
-各ActionTypeで使用できる Transitions のフィールド:
-
-| ActionType | NextAction | Conditions | Errors |
-|-----------|:---:|:---:|:---:|
-| MessageParticipant | o | - | o (NoMatchingError) |
-| GetParticipantInput (StoreInput=False) | o | o (Equals) | o (InputTimeLimitExceeded, NoMatchingCondition, NoMatchingError) |
-| GetParticipantInput (StoreInput=True) | o | - | o (NoMatchingError) |
-| UpdateContactTargetQueue | o | - | o (NoMatchingError) |
-| TransferContactToQueue | o | - | o (QueueAtCapacity, NoMatchingError) |
-| DisconnectParticipant | - | - | - |
-| InvokeLambdaFunction | o | - | o (NoMatchingError) |
-| UpdateContactAttributes | o | - | o (NoMatchingError) |
-| Compare | o | o (Equals) | o (NoMatchingCondition) |
-| InvokeFlowModule | o | - | o (NoMatchingError) |
-| CheckHoursOfOperation | o | o (Equals: True/False) | o (NoMatchingError) |
-| Loop | o | o (ContinueLooping/DoneLooping) **必須** | - |
-| UpdateContactRecordingBehavior | o | - | - |
-| UpdateContactRecordingAndAnalyticsBehavior | o | - | o (NoMatchingError) |
-| UpdateContactTextToSpeechVoice | o | - | o (NoMatchingError) |
-| UpdateFlowLoggingBehavior | o | - | - |
-| TransferToPhoneNumber | o | - | o (CallFailed, NoMatchingError) |
-
-- `o` = 使用可 / `-` = 使用不可・不要
 
 ### Conditions 必須ルール
 

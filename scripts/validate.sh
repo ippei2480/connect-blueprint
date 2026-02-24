@@ -7,6 +7,7 @@
 # ローカルチェック:
 #   - JSON構文 / Version / StartAction / 遷移先参照整合性 / UUID形式 / DisconnectParticipant
 #   - ActionTypeホワイトリスト / DTMFConfigurationフィールド名 / パラメータ名検証
+#   - 孤立ブロック検出 / デッドエンド検出
 #
 # APIバリデーション (--api):
 #   - ローカルチェック通過後、create-contact-flow --status SAVED で下書き作成
@@ -196,16 +197,11 @@ DEPRECATED_DTMF = {
     'FinishOnKey': 'InputTerminationSequence',
     'InactivityTimeLimitSeconds': 'InterdigitTimeLimitSeconds',
 }
-INVALID_DTMF_FIELDS = {'InputTimeLimitSeconds'}
 for a in actions:
     dtmf = a.get('Parameters', {}).get('DTMFConfiguration', {})
     for old_name, new_name in DEPRECATED_DTMF.items():
         if old_name in dtmf:
             f(f"Deprecated DTMFConfiguration field '{old_name}' in {a['Identifier']} — use '{new_name}' instead")
-            dtmf_ok = False
-    for invalid_field in INVALID_DTMF_FIELDS:
-        if invalid_field in dtmf:
-            f(f"Invalid DTMFConfiguration field '{invalid_field}' in {a['Identifier']} — use 'InputTimeLimitSeconds' at Parameters top level instead")
             dtmf_ok = False
 if dtmf_ok:
     p("DTMFConfiguration field names are valid")
@@ -280,6 +276,51 @@ for a in actions:
 
 if transitions_ok:
     p("ActionType-specific Transitions constraints are valid")
+
+# --- New checks (v0.6.0) ---
+
+# 16. Orphan block detection — actions not referenced by StartAction or any Transition
+referenced_ids = set()
+if start:
+    referenced_ids.add(start)
+for a in actions:
+    t = a.get('Transitions', {})
+    next_action = t.get('NextAction')
+    if next_action:
+        referenced_ids.add(next_action)
+    for c in t.get('Conditions', []):
+        c_next = c.get('NextAction')
+        if c_next:
+            referenced_ids.add(c_next)
+    for e in t.get('Errors', []):
+        e_next = e.get('NextAction')
+        if e_next:
+            referenced_ids.add(e_next)
+
+orphans = ids - referenced_ids
+if orphans:
+    for orphan_id in sorted(orphans):
+        orphan_type = next((a['Type'] for a in actions if a['Identifier'] == orphan_id), 'unknown')
+        f(f"Orphan block: {orphan_id} ({orphan_type}) is not referenced by any Transition or StartAction")
+else:
+    p("No orphan blocks detected")
+
+# 17. Dead-end detection — non-DisconnectParticipant actions with no NextAction and no Conditions
+dead_ends = []
+for a in actions:
+    if a.get('Type') == 'DisconnectParticipant':
+        continue
+    t = a.get('Transitions', {})
+    has_next = bool(t.get('NextAction'))
+    has_conditions = bool(t.get('Conditions', []))
+    if not has_next and not has_conditions:
+        dead_ends.append(a)
+
+if dead_ends:
+    for a in dead_ends:
+        f(f"Dead-end: {a['Identifier']} ({a['Type']}) has no NextAction and no Conditions")
+else:
+    p("No dead-end blocks detected")
 
 print("---")
 if errors == 0:

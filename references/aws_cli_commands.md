@@ -28,12 +28,21 @@ aws connect list-hours-of-operations --instance-id $INSTANCE_ID --profile $PROFI
 ## フロー操作
 
 ```bash
-# フロー新規作成
+# フロー新規作成（2ステップ: SAVED → ACTIVE）
+# Step 1: SAVED状態で作成
 aws connect create-contact-flow \
   --instance-id $INSTANCE_ID \
   --name "フロー名" \
   --type CONTACT_FLOW \
   --content "$(cat flow.json)" \
+  --status SAVED \
+  --profile $PROFILE
+
+# Step 2: ACTIVE状態に変更（$FLOW_ID は Step 1 の出力から取得）
+aws connect update-contact-flow-metadata \
+  --instance-id $INSTANCE_ID \
+  --contact-flow-id $FLOW_ID \
+  --contact-flow-state ACTIVE \
   --profile $PROFILE
 
 # フロー更新
@@ -49,6 +58,8 @@ aws connect describe-contact-flow \
   --contact-flow-id $FLOW_ID \
   --profile $PROFILE
 ```
+
+> **Note:** `create-contact-flow` をデフォルト（PUBLISHED）で実行すると `InvalidContactFlowException` になる場合がある。`--status SAVED` で作成後、`update-contact-flow-metadata --contact-flow-state ACTIVE` で公開する2ステップ方式を推奨。
 
 ## フロータイプ
 

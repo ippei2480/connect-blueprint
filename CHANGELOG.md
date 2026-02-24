@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.6.0] - 2026-02-24
+
+### Changed
+- `references/action_types.md`: パラメータ/Transitions/Errors のJSON例・フィールド説明を削除し、共通ルール + AWS Docs URLパス対応テーブルに簡素化。AWS MCP での参照手順を追加
+- `references/flow_json_structure.md`: ActionType別 Transitions 仕様テーブルを削除し「AWS MCP で参照」の注記を追加
+- `references/aws_cli_commands.md`: フロー新規作成コマンドを SAVED → ACTIVE の2ステップ方式に更新
+- `references/error_handling_patterns.md`: ErrorType一覧に「完全な一覧はAWS MCPで確認」の注記を追加
+- `scripts/deploy.sh`: create モードを `--status SAVED` → `update-contact-flow-metadata --contact-flow-state ACTIVE` の2ステップに変更。ACTIVE化失敗時はフローIDを出力して手動対応可能に
+- `SKILL.md`: version 0.6.0、Step 3 に AWS MCP Parameter Validation サブステップ追加、Step 4 Deploy を2ステップに変更、Validation セクションを3層構造に更新
+- `README.md`: バリデーション方式を3層構造の説明に更新、デプロイコマンドを2ステップ方式に更新、References テーブルの action_types.md 説明を更新
+- `CONTRIBUTING.md`: サンプルフロー追加セクションと開発環境の examples 参照を削除
+
+### Added
+- `scripts/validate.sh` Check #16: 孤立ブロック検出（StartAction + 全Transitionsで参照されるIDを集計し、未参照アクションを検出）
+- `scripts/validate.sh` Check #17: デッドエンド検出（DisconnectParticipant以外で NextAction も Conditions も空のアクションを検出）
+
+### Removed
+- `scripts/validate.sh`: `INVALID_DTMF_FIELDS` チェック削除（`InputTimeLimitSeconds` が `DTMFConfiguration` 内にあってもエラーにしない）
+- `examples/` ディレクトリ全削除（business-hours-routing, inquiry-routing, nps-survey）
+- `README.md`: Examples セクション削除
+- `SKILL.md`: Examples セクション削除
+- `.gitignore`: `!templates/**/*.json` と `!examples/**/*.json` の2行を削除
+
 ## [0.5.0] - 2026-02-24
 
 ### Added

@@ -11,20 +11,20 @@
 
 - **Design flows from scratch** — gather requirements, check your Connect environment, generate a Mermaid diagram, then produce a deployable flow JSON
 - **Convert diagrams to flows** — turn draw.io XML, Mermaid diagrams, or screenshots into Amazon Connect flow JSON
-- **Deploy to AWS** — create or update contact flows via AWS CLI
+- **Deploy to AWS** — create or update contact flows via AWS CLI (SAVED → ACTIVE 2-step deploy)
 - **Auto-layout** — assign clean x/y coordinates using topological ordering (no more zigzag arrows)
-- **Validate before deploy** — local structure checks + AWS API validation
+- **Validate before deploy** — 3-layer validation: AWS MCP parameter check + local structure checks + AWS API validation
 
 ## Quick Start
 
 ```
 You: "Amazon Connectで営業時間判定付きのIVRフローを作って"
 
-Agent: 
+Agent:
 1. Connect環境を確認（キュー、プロンプト、Lambda一覧）
 2. Mermaid設計図を生成 → レビュー依頼
-3. 承認後、フローJSONを生成
-4. バリデーション → デプロイ
+3. 承認後、フローJSONを生成（AWS MCPでパラメータ検証）
+4. バリデーション → デプロイ（SAVED → ACTIVE）
 ```
 
 ## Compatibility
@@ -52,21 +52,11 @@ The agent will:
 2. Check your Connect environment (available queues, prompts, Lambda functions)
 3. Generate a Mermaid diagram for your review
 4. Convert the approved diagram to flow JSON with auto-layout
-5. Deploy via AWS CLI
+5. Validate and deploy via AWS CLI (SAVED → ACTIVE 2-step)
 
 ### Mode B: Convert from diagram
 
 Provide a draw.io file, Mermaid diagram, or screenshot — the agent will parse it and generate flow JSON.
-
-## Examples
-
-Ready-to-use sample flows with Mermaid diagrams and deployable JSON:
-
-| Example | Description | Key Features |
-|---------|-------------|-------------|
-| [Business Hours Routing](examples/business-hours-routing/) | 営業時間内外の振り分け | CheckHoursOfOperation, IVR, キュー転送 |
-| [Inquiry Routing](examples/inquiry-routing/) | 問い合わせ種別振り分け | 4択IVR, UpdateContactAttributes, 複数キュー |
-| [NPS Survey](examples/nps-survey/) | 通話後の顧客満足度アンケート | DTMF 0-9, InvokeLambdaFunction |
 
 ## Scripts
 
@@ -77,10 +67,20 @@ Ready-to-use sample flows with Mermaid diagrams and deployable JSON:
 # レイアウト座標付与
 python3 scripts/layout.py flow.json
 
-# ワンコマンドデプロイ（バリデーション→レイアウト→デプロイ）
+# ワンコマンドデプロイ（バリデーション→レイアウト→SAVED作成→ACTIVE化）
 ./scripts/deploy.sh create flow.json --name "My Flow" --instance-id $INSTANCE_ID --profile $PROFILE
 ./scripts/deploy.sh update flow.json --flow-id $FLOW_ID --instance-id $INSTANCE_ID --profile $PROFILE
 ```
+
+## Validation
+
+3層バリデーション構造：
+
+| Layer | 方法 | 検証内容 |
+|-------|------|----------|
+| AWS MCP | `aws___read_documentation` | ActionType別パラメータの正確性 |
+| ローカル | `./scripts/validate.sh` | JSON構造・遷移整合性・孤立ブロック・デッドエンド |
+| Connect API | `./scripts/validate.sh --api` | ActionType固有のパラメータ制約 |
 
 ## Mermaid Notation
 
@@ -117,10 +117,10 @@ graph LR
 
 | Document | Contents |
 |----------|----------|
-| [Action Types](references/action_types.md) | 各ActionTypeのパラメータ・JSON例 |
+| [Action Types](references/action_types.md) | 共通ルール・AWS Docs URLパス対応テーブル |
 | [Flow JSON Structure](references/flow_json_structure.md) | トップレベル構造・バリデーションルール |
 | [Mermaid Notation](references/mermaid_notation.md) | ノード形状→ActionType マッピング |
-| [AWS CLI Commands](references/aws_cli_commands.md) | Connect関連CLIコマンド |
+| [AWS CLI Commands](references/aws_cli_commands.md) | Connect関連CLIコマンド（2ステップデプロイ） |
 | [Layout Rules](references/layout_rules.md) | 座標付与アルゴリズム |
 | [Error Handling Patterns](references/error_handling_patterns.md) | エラーハンドリングのベストプラクティス |
 | [Connect Limits](references/connect_limits.md) | APIの制限・注意点 |

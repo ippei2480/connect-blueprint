@@ -16,6 +16,8 @@
 | `QueueAtCapacity` | TransferContactToQueue | キューが満杯 |
 | `NoMatchingError` | InvokeLambdaFunction | Lambda実行エラー |
 
+> **Note:** 完全な ErrorType 一覧は AWS MCP (`aws___read_documentation`) で各ActionTypeの公式ドキュメントを参照してください。上記は主要なもののみ記載しています。
+
 ### GetParticipantInput + StoreInput=True 時の ErrorType
 
 `StoreInput: "True"` の場合、Conditions を使用しないため `NoMatchingCondition` は発生しない。

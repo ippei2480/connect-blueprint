@@ -2,14 +2,14 @@
 # deploy.sh — Amazon Connect フローのデプロイヘルパー
 #
 # Usage:
-#   # 新規作成
+#   # 新規作成（SAVED → ACTIVE の2ステップ）
 #   ./scripts/deploy.sh create <flow.json> --name "Flow Name" --instance-id <ID> --profile <PROFILE>
 #
 #   # 既存更新
 #   ./scripts/deploy.sh update <flow.json> --flow-id <FLOW_ID> --instance-id <ID> --profile <PROFILE>
 #
 # ローカルバリデーション → レイアウト → デプロイの3ステップを自動実行する。
-# デプロイ時に Connect API が自動でフロー内容をバリデーションする（InvalidContactFlowException で失敗通知）。
+# create モード: --status SAVED で作成後、update-contact-flow-metadata --contact-flow-state ACTIVE で公開する。
 
 set -euo pipefail
 
@@ -17,6 +17,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
 NC='\033[0m'
 
 MODE=""
@@ -84,8 +85,6 @@ if ! $SKIP_LAYOUT; then
 fi
 
 # Step 3: Deploy
-# Note: Connect API validates flow content automatically on create/update (--status PUBLISHED).
-#       InvalidContactFlowException is returned if validation fails.
 echo "Step 3: デプロイ..."
 case "$MODE" in
   create)
@@ -93,21 +92,48 @@ case "$MODE" in
       echo -e "${RED}Error: --name is required for create${NC}"
       exit 1
     fi
+
+    # Step 3a: Create flow with --status SAVED
     aws_create_args=(
       connect create-contact-flow
       --instance-id "$INSTANCE_ID"
       --name "$FLOW_NAME"
       --type CONTACT_FLOW
       --content "$(cat "$FLOW_FILE")"
+      --status SAVED
     )
     [[ -n "$PROFILE" ]] && aws_create_args+=(--profile "$PROFILE")
+
     if RESULT=$(aws "${aws_create_args[@]}" 2>&1); then
-      echo -e "${GREEN}✓${NC} フロー作成完了"
+      echo -e "${GREEN}✓${NC} フロー作成完了（SAVED状態）"
+      FLOW_ID=$(echo "$RESULT" | python3 -c "import sys,json; print(json.load(sys.stdin)['ContactFlowId'])" 2>/dev/null || true)
       echo "$RESULT" | python3 -m json.tool
     else
       echo -e "${RED}✗${NC} フロー作成失敗（InvalidContactFlowException の場合はフローJSONを修正してください）"
       echo "$RESULT"
       exit 1
+    fi
+
+    # Step 3b: Activate flow with update-contact-flow-metadata
+    if [[ -n "$FLOW_ID" ]]; then
+      aws_activate_args=(
+        connect update-contact-flow-metadata
+        --instance-id "$INSTANCE_ID"
+        --contact-flow-id "$FLOW_ID"
+        --contact-flow-state ACTIVE
+      )
+      [[ -n "$PROFILE" ]] && aws_activate_args+=(--profile "$PROFILE")
+
+      if aws "${aws_activate_args[@]}" 2>&1; then
+        echo -e "${GREEN}✓${NC} フローをACTIVE状態に変更完了 (Flow ID: $FLOW_ID)"
+      else
+        echo -e "${YELLOW}⚠${NC} フローのACTIVE化に失敗しました（Flow ID: $FLOW_ID）"
+        echo -e "${YELLOW}⚠${NC} 手動で有効化してください:"
+        echo "  aws connect update-contact-flow-metadata --instance-id $INSTANCE_ID --contact-flow-id $FLOW_ID --contact-flow-state ACTIVE"
+        [[ -n "$PROFILE" ]] && echo "  （--profile $PROFILE を追加）"
+      fi
+    else
+      echo -e "${YELLOW}⚠${NC} フローIDの取得に失敗しました。手動でACTIVE化してください。"
     fi
     ;;
   update)
