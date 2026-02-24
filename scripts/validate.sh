@@ -1,10 +1,17 @@
 #!/usr/bin/env bash
-# validate.sh — Amazon Connect フローJSONのローカルバリデーション
-# Usage: ./scripts/validate.sh <flow.json>
+# validate.sh — Amazon Connect フローJSONのバリデーション
+# Usage:
+#   ./scripts/validate.sh <flow.json>                              # ローカルチェックのみ
+#   ./scripts/validate.sh --api --instance-id $ID --profile $P flow.json  # ローカル + Connect API
 #
 # ローカルチェック:
 #   - JSON構文 / Version / StartAction / 遷移先参照整合性 / UUID形式 / DisconnectParticipant
 #   - ActionTypeホワイトリスト / DTMFConfigurationフィールド名 / パラメータ名検証
+#
+# APIバリデーション (--api):
+#   - ローカルチェック通過後、create-contact-flow --status SAVED で下書き作成
+#   - 成功 → 下書きを自動削除
+#   - 失敗 → InvalidContactFlowException のエラー内容を表示
 
 set -euo pipefail
 
@@ -19,22 +26,35 @@ warn() { echo -e "${YELLOW}⚠${NC} $1"; }
 
 ERRORS=0
 FLOW_FILE=""
+API_VALIDATE=false
+INSTANCE_ID=""
+AWS_PROFILE=""
 
 while [[ $# -gt 0 ]]; do
   case $1 in
+    --api) API_VALIDATE=true; shift ;;
+    --instance-id) INSTANCE_ID="$2"; shift 2 ;;
+    --profile) AWS_PROFILE="$2"; shift 2 ;;
     -*) echo "Unknown option: $1"; exit 1 ;;
     *) FLOW_FILE="$1"; shift ;;
   esac
 done
 
 if [[ -z "$FLOW_FILE" ]]; then
-  echo "Usage: $0 <flow.json>"
+  echo "Usage: $0 [--api --instance-id <id> --profile <profile>] <flow.json>"
   exit 1
 fi
 
 if [[ ! -f "$FLOW_FILE" ]]; then
   echo -e "${RED}Error: File not found: $FLOW_FILE${NC}"
   exit 1
+fi
+
+if [[ "$API_VALIDATE" == true ]]; then
+  if [[ -z "$INSTANCE_ID" ]]; then
+    echo -e "${RED}Error: --instance-id is required with --api${NC}"
+    exit 1
+  fi
 fi
 
 echo "Validating: $FLOW_FILE"
@@ -176,11 +196,16 @@ DEPRECATED_DTMF = {
     'FinishOnKey': 'InputTerminationSequence',
     'InactivityTimeLimitSeconds': 'InterdigitTimeLimitSeconds',
 }
+INVALID_DTMF_FIELDS = {'InputTimeLimitSeconds'}
 for a in actions:
     dtmf = a.get('Parameters', {}).get('DTMFConfiguration', {})
     for old_name, new_name in DEPRECATED_DTMF.items():
         if old_name in dtmf:
             f(f"Deprecated DTMFConfiguration field '{old_name}' in {a['Identifier']} — use '{new_name}' instead")
+            dtmf_ok = False
+    for invalid_field in INVALID_DTMF_FIELDS:
+        if invalid_field in dtmf:
+            f(f"Invalid DTMFConfiguration field '{invalid_field}' in {a['Identifier']} — use 'InputTimeLimitSeconds' at Parameters top level instead")
             dtmf_ok = False
 if dtmf_ok:
     p("DTMFConfiguration field names are valid")
@@ -263,3 +288,68 @@ else:
     print(f"{RED}{errors} error(s) found.{NC}")
     sys.exit(1)
 PYEOF
+
+LOCAL_EXIT=$?
+if [[ $LOCAL_EXIT -ne 0 ]]; then
+  exit $LOCAL_EXIT
+fi
+
+# --- API Validation ---
+if [[ "$API_VALIDATE" == true ]]; then
+  echo ""
+  echo "=== Connect API Validation ==="
+
+  FLOW_NAME="__validation_$(date +%Y%m%d_%H%M%S)__"
+  CONTENT="$(cat "$FLOW_FILE")"
+
+  # Build AWS CLI args
+  AWS_ARGS=(
+    connect create-contact-flow
+    --instance-id "$INSTANCE_ID"
+    --name "$FLOW_NAME"
+    --type CONTACT_FLOW
+    --content "$CONTENT"
+    --status SAVED
+  )
+  if [[ -n "$AWS_PROFILE" ]]; then
+    AWS_ARGS+=(--profile "$AWS_PROFILE")
+  fi
+
+  # Attempt to create draft flow
+  API_OUTPUT=""
+  API_EXIT=0
+  API_OUTPUT=$(aws "${AWS_ARGS[@]}" 2>&1) || API_EXIT=$?
+
+  if [[ $API_EXIT -eq 0 ]]; then
+    pass "Connect API validation passed"
+
+    # Extract flow ID and delete the draft
+    FLOW_ID=$(echo "$API_OUTPUT" | python3 -c "import sys,json; print(json.load(sys.stdin)['ContactFlowId'])" 2>/dev/null || true)
+    if [[ -n "$FLOW_ID" ]]; then
+      DELETE_ARGS=(
+        connect delete-contact-flow
+        --instance-id "$INSTANCE_ID"
+        --contact-flow-id "$FLOW_ID"
+      )
+      if [[ -n "$AWS_PROFILE" ]]; then
+        DELETE_ARGS+=(--profile "$AWS_PROFILE")
+      fi
+
+      if aws "${DELETE_ARGS[@]}" 2>/dev/null; then
+        pass "Draft flow deleted (ID: $FLOW_ID)"
+      else
+        warn "Draft flow created but could not be deleted (ID: $FLOW_ID)"
+        warn "Manually delete: aws connect delete-contact-flow --instance-id $INSTANCE_ID --contact-flow-id $FLOW_ID"
+      fi
+    fi
+  else
+    fail "Connect API validation failed"
+    echo -e "${RED}--- API Error ---${NC}"
+    echo "$API_OUTPUT"
+    echo -e "${RED}--- End API Error ---${NC}"
+    exit 1
+  fi
+
+  echo "---"
+  echo -e "${GREEN}All checks passed (local + API)!${NC}"
+fi

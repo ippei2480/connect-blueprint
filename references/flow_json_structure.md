@@ -98,7 +98,7 @@ Action オブジェクト直下の `Metadata` は Connect API が拒否する。
 |-----------|:---:|:---:|:---:|
 | MessageParticipant | o | - | o (NoMatchingError) |
 | GetParticipantInput (StoreInput=False) | o | o (Equals) | o (InputTimeLimitExceeded, NoMatchingCondition, NoMatchingError) |
-| GetParticipantInput (StoreInput=True) | o | - | o (InputTimeLimitExceeded, NoMatchingError) |
+| GetParticipantInput (StoreInput=True) | o | - | o (NoMatchingError) |
 | UpdateContactTargetQueue | o | - | o (NoMatchingError) |
 | TransferContactToQueue | o | - | o (QueueAtCapacity, NoMatchingError) |
 | DisconnectParticipant | - | - | - |
@@ -108,7 +108,7 @@ Action オブジェクト直下の `Metadata` は Connect API が拒否する。
 | InvokeFlowModule | o | - | o (NoMatchingError) |
 | CheckHoursOfOperation | o | o (Equals: True/False) | o (NoMatchingError) |
 | Loop | o | o (ContinueLooping/DoneLooping) **必須** | - |
-| UpdateContactRecordingBehavior | o | - | o (NoMatchingError) |
+| UpdateContactRecordingBehavior | o | - | - |
 | UpdateContactRecordingAndAnalyticsBehavior | o | - | o (NoMatchingError) |
 | UpdateContactTextToSpeechVoice | o | - | o (NoMatchingError) |
 | UpdateFlowLoggingBehavior | o | - | - |
@@ -130,7 +130,7 @@ Action オブジェクト直下の `Metadata` は Connect API が拒否する。
 
 ### Errors 必須ルール
 
-- `DisconnectParticipant` と `UpdateFlowLoggingBehavior` 以外のすべての ActionType で `Errors` 配列が必須
+- `DisconnectParticipant`、`UpdateFlowLoggingBehavior`、`UpdateContactRecordingBehavior` 以外のすべての ActionType で `Errors` 配列が必須
 - 最低限 `NoMatchingError` をキャッチオールとして含める
 
 ## バリデーションルール

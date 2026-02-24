@@ -27,7 +27,7 @@
 
 ### Errors 共通ルール
 
-- `DisconnectParticipant` と `UpdateFlowLoggingBehavior` 以外は `Errors` 必須
+- `DisconnectParticipant`、`UpdateFlowLoggingBehavior`、`UpdateContactRecordingBehavior` 以外は `Errors` 必須
 - `NoMatchingError` はキャッチオールとして常に含める
 
 ### パラメータ値の型
@@ -74,6 +74,8 @@
 
 DTMF入力を取得する（IVRメニュー）。
 
+**IVRメニューモード（StoreInput=False または未指定）:**
+
 ```json
 {
   "Identifier": "uuid",
@@ -81,7 +83,6 @@ DTMF入力を取得する（IVRメニュー）。
   "Parameters": {
     "Text": "1を押してください",
     "DTMFConfiguration": {
-      "InputTimeLimitSeconds": "8",
       "InputTerminationSequence": "#",
       "InterdigitTimeLimitSeconds": "5",
       "DisableCancelKey": "False"
@@ -108,27 +109,67 @@ DTMF入力を取得する（IVRメニュー）。
 }
 ```
 
+**自由入力モード（StoreInput=True）:**
+
+```json
+{
+  "Identifier": "uuid",
+  "Type": "GetParticipantInput",
+  "Parameters": {
+    "Text": "お客様番号を4桁で入力し、最後にシャープを押してください。",
+    "StoreInput": "True",
+    "InputTimeLimitSeconds": "10",
+    "InputValidation": {
+      "CustomValidation": {
+        "MaximumLength": "4"
+      }
+    }
+  },
+  "Transitions": {
+    "NextAction": "next-uuid",
+    "Errors": [
+      { "NextAction": "error-uuid", "ErrorType": "NoMatchingError" }
+    ],
+    "Conditions": []
+  }
+}
+```
+
 **Parameters:**
 - `Text` — プロンプトテキスト
-- `DTMFConfiguration.InputTimeLimitSeconds` — 入力待ちタイムアウト（秒）
 - `DTMFConfiguration.InputTerminationSequence` — 入力完了キー（通常 `"#"`）
 - `DTMFConfiguration.InterdigitTimeLimitSeconds` — 桁間タイムアウト（秒）
 - `DTMFConfiguration.DisableCancelKey` — キャンセルキー（*）無効化（`"True"` / `"False"`）
-- `InputTimeLimitSeconds` — 全体タイムアウト
+- `InputTimeLimitSeconds` — 全体タイムアウト（**Parameters直下に配置**、DTMFConfiguration内には置かない）
 - `StoreInput` — 入力値を `$.StoredCustomerInput` に保存（`"True"` / `"False"`）
+- `InputValidation` — StoreInput=True 時に必須。入力値のバリデーション設定
+
+**InputValidation 構造:**
+```json
+"InputValidation": {
+  "CustomValidation": {
+    "MaximumLength": "4"
+  }
+}
+```
 
 **StoreInput による動作の違い:**
-- `StoreInput: "True"` → Conditions使用不可。`InputValidation` 必須。入力値は `$.StoredCustomerInput` に格納される
-- `StoreInput: "False"` or 未指定 → Conditions使用可（通常のIVRメニューモード）
+- `StoreInput: "True"` → Conditions使用不可（空配列 `[]`）。`InputValidation` 必須。入力値は `$.StoredCustomerInput` に格納される。Errors は `NoMatchingError` のみ
+- `StoreInput: "False"` or 未指定 → Conditions使用可（通常のIVRメニューモード）。`DTMFConfiguration` で入力設定
 
 **Conditions:**
 - `Operator`: `Equals`
 - `Operands`: DTMF値の配列（例: `["1"]`）
 
-**Transitions:**
+**Transitions（StoreInput=False または未指定時）:**
 - `NextAction`: o（タイムアウト時のデフォルト遷移先）
-- `Conditions`: o (`Equals`) — `StoreInput: "False"` または未指定時のみ
+- `Conditions`: o (`Equals`)
 - `Errors`: o (`NoMatchingCondition`, `InputTimeLimitExceeded`, `NoMatchingError`)
+
+**Transitions（StoreInput=True 時）:**
+- `NextAction`: o
+- `Conditions`: - （空配列 `[]`）
+- `Errors`: o (`NoMatchingError`)
 
 ---
 
@@ -438,9 +479,8 @@ Lambda関数を呼び出す。
   },
   "Transitions": {
     "NextAction": "next-uuid",
-    "Errors": [
-      { "NextAction": "error-uuid", "ErrorType": "NoMatchingError" }
-    ]
+    "Errors": [],
+    "Conditions": []
   }
 }
 ```
@@ -475,9 +515,8 @@ Lambda関数を呼び出す。
   },
   "Transitions": {
     "NextAction": "next-uuid",
-    "Errors": [
-      { "NextAction": "error-uuid", "ErrorType": "NoMatchingError" }
-    ]
+    "Errors": [],
+    "Conditions": []
   }
 }
 ```
@@ -485,7 +524,7 @@ Lambda関数を呼び出す。
 **Transitions:**
 - `NextAction`: o
 - `Conditions`: -
-- `Errors`: o (`NoMatchingError`)
+- `Errors`: -
 
 ---
 

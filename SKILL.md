@@ -95,16 +95,20 @@ python3 scripts/layout.py <flow.json>
 If validation returns errors, fix the flow JSON and re-validate before proceeding.
 Only deploy after validation passes with no errors.
 
+#### APIバリデーション (recommended)
+```bash
+./scripts/validate.sh --api --instance-id $INSTANCE_ID --profile $PROFILE flow.json
+```
+ローカルチェック通過後、`create-contact-flow --status SAVED` で下書きを作成してConnect APIによるバリデーションを実行する。成功時は下書きを自動削除する。
+
+> **Why:** ローカルチェックはJSON構造・遷移参照の整合性のみ検証する。ActionType固有のパラメータ制約やErrors/Conditionsの妥当性はConnect API側でしか検証できないため、APIバリデーションで事前にエラーを検出する。
+
 **エラーが発生した場合:**
 1. まず aws-mcp (`aws___search_documentation` / `aws___read_documentation`) で AWS 公式ドキュメントを調査する
 2. AWS公式ドキュメントに基づいて修正する
 3. 推測による修正は避ける
 
 #### Deploy
-
-> **Note:** Connect API は `create-contact-flow` / `update-contact-flow-content` 実行時に
-> 自動でフロー内容をバリデーションする（デフォルトの `--status PUBLISHED`）。
-> バリデーション失敗時は `InvalidContactFlowException` が返される。
 ```bash
 # Create new flow
 aws connect create-contact-flow \
@@ -150,7 +154,7 @@ aws connect update-contact-flow-content \
 - `.env` ファイルや AWS クレデンシャルファイル（`~/.aws/credentials` 等）を読み取らないこと
 
 ### 安全な操作（確認不要）
-- `scripts/validate.sh <file>` によるローカルバリデーション
+- `scripts/validate.sh <file>` によるローカルバリデーション（`--api` オプション含む。下書き保存は自動削除される）
 - `python3 scripts/layout.py <file>` によるレイアウト座標付与
 - フローJSONの作成・編集
 - サンプルフローの参照
@@ -166,16 +170,19 @@ aws connect update-contact-flow-content \
 
 ## Validation
 
-デプロイ前に必ずローカルバリデーションを実行する：
+デプロイ前に必ずバリデーションを実行する：
 
 ```bash
 # ローカルバリデーション（JSON構造・参照整合性チェック）
 ./scripts/validate.sh flow.json
+
+# APIバリデーション（ローカル + Connect API による完全バリデーション）
+./scripts/validate.sh --api --instance-id $INSTANCE_ID --profile $PROFILE flow.json
 ```
 
-> **Note:** 純粋な「バリデーションだけ」の Connect API は存在しない。
-> デプロイ時（`create-contact-flow` / `update-contact-flow-content`）に Connect が自動でバリデーションを実行し、
-> 問題があれば `InvalidContactFlowException` を返す。
+> **推奨:** APIバリデーション（`--api`）を使用する。ローカルチェックでは検出できない
+> ActionType固有のパラメータ制約やErrors/Conditionsの妥当性をConnect APIが検証する。
+> `--status SAVED`（下書き保存）で作成するため本番に影響しない。
 
 ## Examples
 
