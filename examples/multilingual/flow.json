@@ -1,7 +1,17 @@
 {
   "Version": "2019-10-30",
-  "StartAction": "e0000001-0000-0000-0000-000000000001",
+  "StartAction": "e0000001-0000-0000-0000-000000000000",
   "Actions": [
+    {
+      "Identifier": "e0000001-0000-0000-0000-000000000000",
+      "Type": "UpdateFlowLoggingBehavior",
+      "Parameters": {
+        "FlowLoggingBehavior": "Enabled"
+      },
+      "Transitions": {
+        "NextAction": "e0000001-0000-0000-0000-000000000001"
+      }
+    },
     {
       "Identifier": "e0000001-0000-0000-0000-000000000001",
       "Type": "GetParticipantInput",
@@ -9,8 +19,8 @@
         "Text": "お電話ありがとうございます。日本語は1を押してください。For English, press 2.",
         "DTMFConfiguration": {
           "InputTimeLimitSeconds": "8",
-          "FinishOnKey": "#",
-          "InactivityTimeLimitSeconds": "5"
+          "InputTerminationSequence": "#",
+          "InterdigitTimeLimitSeconds": "5"
         },
         "InputTimeLimitSeconds": "8"
       },
@@ -70,8 +80,8 @@
         "Text": "営業へのお問い合わせは1を、サポートへのお問い合わせは2を押してください。",
         "DTMFConfiguration": {
           "InputTimeLimitSeconds": "8",
-          "FinishOnKey": "#",
-          "InactivityTimeLimitSeconds": "5"
+          "InputTerminationSequence": "#",
+          "InterdigitTimeLimitSeconds": "5"
         },
         "InputTimeLimitSeconds": "8"
       },
@@ -101,8 +111,8 @@
         "Text": "For sales inquiries, press 1. For support, press 2.",
         "DTMFConfiguration": {
           "InputTimeLimitSeconds": "8",
-          "FinishOnKey": "#",
-          "InactivityTimeLimitSeconds": "5"
+          "InputTerminationSequence": "#",
+          "InterdigitTimeLimitSeconds": "5"
         },
         "InputTimeLimitSeconds": "8"
       },
@@ -198,17 +208,18 @@
   ],
   "Metadata": {
     "ActionMetadata": {
-      "e0000001-0000-0000-0000-000000000001": { "position": { "x": 100, "y": 300 } },
-      "e0000001-0000-0000-0000-000000000002": { "position": { "x": 400, "y": 100 } },
-      "e0000001-0000-0000-0000-000000000003": { "position": { "x": 400, "y": 500 } },
-      "e0000001-0000-0000-0000-000000000004": { "position": { "x": 700, "y": 100 } },
-      "e0000001-0000-0000-0000-000000000005": { "position": { "x": 700, "y": 500 } },
-      "e0000001-0000-0000-0000-000000000006": { "position": { "x": 1000, "y": 200 } },
-      "e0000001-0000-0000-0000-000000000007": { "position": { "x": 1000, "y": 400 } },
-      "e0000001-0000-0000-0000-000000000008": { "position": { "x": 1300, "y": 300 } },
-      "e0000001-0000-0000-0000-000000000010": { "position": { "x": 1000, "y": 0 } },
-      "e0000001-0000-0000-0000-000000000011": { "position": { "x": 1000, "y": 600 } },
-      "e0000001-0000-0000-0000-000000000012": { "position": { "x": 1600, "y": 300 } }
+      "e0000001-0000-0000-0000-000000000000": { "position": { "x": 50, "y": 300 } },
+      "e0000001-0000-0000-0000-000000000001": { "position": { "x": 200, "y": 300 } },
+      "e0000001-0000-0000-0000-000000000002": { "position": { "x": 500, "y": 100 } },
+      "e0000001-0000-0000-0000-000000000003": { "position": { "x": 500, "y": 500 } },
+      "e0000001-0000-0000-0000-000000000004": { "position": { "x": 800, "y": 100 } },
+      "e0000001-0000-0000-0000-000000000005": { "position": { "x": 800, "y": 500 } },
+      "e0000001-0000-0000-0000-000000000006": { "position": { "x": 1100, "y": 200 } },
+      "e0000001-0000-0000-0000-000000000007": { "position": { "x": 1100, "y": 400 } },
+      "e0000001-0000-0000-0000-000000000008": { "position": { "x": 1400, "y": 300 } },
+      "e0000001-0000-0000-0000-000000000010": { "position": { "x": 1100, "y": 0 } },
+      "e0000001-0000-0000-0000-000000000011": { "position": { "x": 1100, "y": 600 } },
+      "e0000001-0000-0000-0000-000000000012": { "position": { "x": 1700, "y": 300 } }
     }
   }
 }

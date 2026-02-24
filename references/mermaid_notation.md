@@ -13,6 +13,12 @@
 | 普通の四角 | `id["key=value"]` | UpdateContactAttributes |
 | スタジアム | `id(["モジュール名"])` | InvokeFlowModule |
 | 円 | `id(("切断"))` | DisconnectParticipant |
+| ⏰付きひし形 | `id{"⏰ 営業時間"}` | CheckHoursOfOperation |
+| 🔁付きひし形 | `id{"🔁 ループ:N回"}` | Loop |
+| 🔊付き四角 | `id["🔊 音声名"]` | UpdateContactTextToSpeechVoice |
+| 📝付き四角 | `id["📝 ログ:有効"]` | UpdateFlowLoggingBehavior |
+| 🎙付き四角 | `id["🎙 録音:Agent,Customer"]` | UpdateContactRecordingBehavior |
+| 📱付き二重四角 | `id[["📱 転送:番号"]]` | TransferToPhoneNumber |
 
 ## エッジ（遷移）
 
@@ -20,6 +26,8 @@
 A --> B                    %% NextAction
 A -->|"Pressed 1"| B       %% DTMF条件
 A -->|"= true"| B          %% 属性比較条件
+A -->|"ContinueLooping"| B %% ループ継続
+A -->|"DoneLooping"| C     %% ループ完了
 A -->|"Error"| C           %% エラー遷移
 A -->|"Timeout"| C         %% タイムアウト
 A -->|"NoMatch"| C         %% 不一致
@@ -41,6 +49,7 @@ id{{"メインメニュー\nTimeout:8\nDTMF:1-3"}}
 
 ```mermaid
 graph LR
+  log["📝 ログ:有効"]
   entry(["共通挨拶"])
   menu{{"メインメニュー\nTimeout:8\nDTMF:1-2"}}
   play1("相続のお問い合わせ承ります")
@@ -48,6 +57,7 @@ graph LR
   transfer1[["キューへ転送"]]
   end1(("切断"))
 
+  log --> entry
   entry --> menu
   menu -->|"Pressed 1"| play1
   menu -->|"Pressed 2"| end1

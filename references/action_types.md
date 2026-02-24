@@ -24,6 +24,11 @@
 - `Text` (string) — 再生するテキスト。SSML可（`<speak>...</speak>`）
 - `SSML` (string) — SSMLを直接指定する場合
 
+**Transitions:**
+- `NextAction`: o
+- `Conditions`: -
+- `Errors`: o (`NoMatchingError`)
+
 ---
 
 ## GetParticipantInput
@@ -38,8 +43,9 @@ DTMF入力を取得する（IVRメニュー）。
     "Text": "1を押してください",
     "DTMFConfiguration": {
       "InputTimeLimitSeconds": "8",
-      "FinishOnKey": "#",
-      "InactivityTimeLimitSeconds": "5"
+      "InputTerminationSequence": "#",
+      "InterdigitTimeLimitSeconds": "5",
+      "DisableCancelKey": "False"
     },
     "InputTimeLimitSeconds": "8"
   },
@@ -66,12 +72,24 @@ DTMF入力を取得する（IVRメニュー）。
 **Parameters:**
 - `Text` — プロンプトテキスト
 - `DTMFConfiguration.InputTimeLimitSeconds` — 入力待ちタイムアウト（秒）
-- `DTMFConfiguration.FinishOnKey` — 入力完了キー（通常 `#`）
+- `DTMFConfiguration.InputTerminationSequence` — 入力完了キー（通常 `"#"`）
+- `DTMFConfiguration.InterdigitTimeLimitSeconds` — 桁間タイムアウト（秒）
+- `DTMFConfiguration.DisableCancelKey` — キャンセルキー（*）無効化（`"True"` / `"False"`）
 - `InputTimeLimitSeconds` — 全体タイムアウト
+- `StoreInput` — 入力値を `$.StoredCustomerInput` に保存（`"True"` / `"False"`）
+
+**StoreInput による動作の違い:**
+- `StoreInput: "True"` → Conditions使用不可。`InputValidation` 必須。入力値は `$.StoredCustomerInput` に格納される
+- `StoreInput: "False"` or 未指定 → Conditions使用可（通常のIVRメニューモード）
 
 **Conditions:**
 - `Operator`: `Equals`
 - `Operands`: DTMF値の配列（例: `["1"]`）
+
+**Transitions:**
+- `NextAction`: o（タイムアウト時のデフォルト遷移先）
+- `Conditions`: o (`Equals`) — `StoreInput: "False"` または未指定時のみ
+- `Errors`: o (`NoMatchingCondition`, `InputTimeLimitExceeded`, `NoMatchingError`)
 
 ---
 
@@ -98,6 +116,11 @@ DTMF入力を取得する（IVRメニュー）。
 **Parameters:**
 - `QueueId` — キューのARN
 
+**Transitions:**
+- `NextAction`: o
+- `Conditions`: -
+- `Errors`: o (`NoMatchingError`)
+
 ---
 
 ## TransferContactToQueue
@@ -119,6 +142,11 @@ DTMF入力を取得する（IVRメニュー）。
 }
 ```
 
+**Transitions:**
+- `NextAction`: o
+- `Conditions`: -
+- `Errors`: o (`QueueAtCapacity`, `NoMatchingError`)
+
 ---
 
 ## DisconnectParticipant
@@ -133,6 +161,11 @@ DTMF入力を取得する（IVRメニュー）。
   "Transitions": {}
 }
 ```
+
+**Transitions:**
+- `NextAction`: -
+- `Conditions`: -
+- `Errors`: -
 
 ---
 
@@ -165,6 +198,11 @@ Lambda関数を呼び出す。
 - `InvocationTimeLimitSeconds` — タイムアウト（秒）
 - `LambdaInvocationAttributes` — Lambda に渡すキーバリュー
 
+**Transitions:**
+- `NextAction`: o
+- `Conditions`: -
+- `Errors`: o (`NoMatchingError`)
+
 ---
 
 ## UpdateContactAttributes
@@ -188,6 +226,11 @@ Lambda関数を呼び出す。
   }
 }
 ```
+
+**Transitions:**
+- `NextAction`: o
+- `Conditions`: -
+- `Errors`: o (`NoMatchingError`)
 
 ---
 
@@ -220,6 +263,11 @@ Lambda関数を呼び出す。
 }
 ```
 
+**Transitions:**
+- `NextAction`: o（デフォルト遷移先）
+- `Conditions`: o (`Equals`)
+- `Errors`: o (`NoMatchingCondition`)
+
 ---
 
 ## InvokeFlowModule
@@ -241,6 +289,11 @@ Lambda関数を呼び出す。
   }
 }
 ```
+
+**Transitions:**
+- `NextAction`: o
+- `Conditions`: -
+- `Errors`: o (`NoMatchingError`)
 
 ---
 
@@ -281,6 +334,54 @@ Lambda関数を呼び出す。
 **Parameters:**
 - `HoursOfOperationId` (string, optional) — 指定しない場合はキューに設定された営業時間を使用
 
+**Transitions:**
+- `NextAction`: o（デフォルト遷移先）
+- `Conditions`: o (`Equals`: `"True"` / `"False"`)
+- `Errors`: o (`NoMatchingError`)
+
+---
+
+## Loop
+
+ループ処理を行う。指定回数までContinueLooping、超過するとDoneLooping条件に遷移する。
+
+```json
+{
+  "Identifier": "uuid",
+  "Type": "Loop",
+  "Parameters": {
+    "LoopCount": "3"
+  },
+  "Transitions": {
+    "NextAction": "done-uuid",
+    "Conditions": [
+      {
+        "NextAction": "continue-uuid",
+        "Condition": {
+          "Operator": "Equals",
+          "Operands": ["ContinueLooping"]
+        }
+      },
+      {
+        "NextAction": "done-uuid",
+        "Condition": {
+          "Operator": "Equals",
+          "Operands": ["DoneLooping"]
+        }
+      }
+    ]
+  }
+}
+```
+
+**Parameters:**
+- `LoopCount` (string) — ループ回数（例: `"3"`）
+
+**Transitions:**
+- `NextAction`: o（デフォルト遷移先）
+- `Conditions`: o **必須**（`ContinueLooping` + `DoneLooping` の両方が必要）
+- `Errors`: -
+
 ---
 
 ## UpdateContactRecordingBehavior
@@ -306,21 +407,101 @@ Lambda関数を呼び出す。
 ```
 
 **Parameters:**
-- `RecordedParticipants` — 録音対象（`["Agent"]`, `["Customer"]`, `["Agent", "Customer"]`）
+- `RecordingBehavior.RecordedParticipants` — 録音対象（`["Agent"]`, `["Customer"]`, `["Agent", "Customer"]`）
 - 録音停止は `"RecordedParticipants": []` を指定
+- `AnalyticsBehavior` (optional) — Contact Lens リアルタイム分析設定
+  - `Enabled`: `"True"` / `"False"`
+  - `AnalyticsLanguage`: 分析言語（`"ja-JP"`, `"en-US"` 等）
+  - `AnalyticsRedactionBehavior`: 機密情報マスキング（`"Enabled"` / `"Disabled"`）
+  - `AnalyticsRedactionResults`: マスキング後の出力（`"RedactedAndOriginal"` 等）
+- `IVRRecordingBehavior` (optional) — IVR録音設定
+  - `RecordedParticipants`: IVR録音対象
+- `ScreenRecordedParticipants` (optional) — 画面録画対象
+
+**Contact Lens 分析付きの例:**
+
+```json
+{
+  "Type": "UpdateContactRecordingBehavior",
+  "Parameters": {
+    "RecordingBehavior": {
+      "RecordedParticipants": ["Agent", "Customer"]
+    },
+    "AnalyticsBehavior": {
+      "Enabled": "True",
+      "AnalyticsLanguage": "ja-JP",
+      "AnalyticsRedactionBehavior": "Disabled",
+      "AnalyticsRedactionResults": "RedactedAndOriginal"
+    }
+  },
+  "Transitions": {
+    "NextAction": "next-uuid",
+    "Errors": [
+      { "NextAction": "error-uuid", "ErrorType": "NoMatchingError" }
+    ]
+  }
+}
+```
+
+**Transitions:**
+- `NextAction`: o
+- `Conditions`: -
+- `Errors`: o (`NoMatchingError`)
 
 ---
 
-## SetVoice
+## UpdateContactRecordingAndAnalyticsBehavior
+
+録音とアナリティクスを統合制御する（`UpdateContactRecordingBehavior` の後継）。
+録音設定とContact Lens分析設定を1つのアクションで同時に制御する場合に使用する。
+
+```json
+{
+  "Identifier": "uuid",
+  "Type": "UpdateContactRecordingAndAnalyticsBehavior",
+  "Parameters": {
+    "RecordingBehavior": {
+      "RecordedParticipants": ["Agent", "Customer"]
+    },
+    "AnalyticsBehavior": {
+      "Enabled": "True",
+      "AnalyticsLanguage": "ja-JP",
+      "AnalyticsRedactionBehavior": "Disabled",
+      "AnalyticsRedactionResults": "RedactedAndOriginal"
+    }
+  },
+  "Transitions": {
+    "NextAction": "next-uuid",
+    "Errors": [
+      { "NextAction": "error-uuid", "ErrorType": "NoMatchingError" }
+    ]
+  }
+}
+```
+
+**Parameters:**
+- `RecordingBehavior.RecordedParticipants` — 録音対象（`UpdateContactRecordingBehavior` と同じ）
+- `AnalyticsBehavior` — Contact Lens 分析設定（`UpdateContactRecordingBehavior` の `AnalyticsBehavior` と同じ）
+
+**Transitions:**
+- `NextAction`: o
+- `Conditions`: -
+- `Errors`: o (`NoMatchingError`)
+
+---
+
+## UpdateContactTextToSpeechVoice
 
 テキスト読み上げの音声を設定する。
 
 ```json
 {
   "Identifier": "uuid",
-  "Type": "SetVoice",
+  "Type": "UpdateContactTextToSpeechVoice",
   "Parameters": {
-    "GlobalVoice": "Mizuki"
+    "TextToSpeechVoice": "Mizuki",
+    "TextToSpeechEngine": "Standard",
+    "TextToSpeechStyle": "None"
   },
   "Transitions": {
     "NextAction": "next-uuid",
@@ -332,32 +513,41 @@ Lambda関数を呼び出す。
 ```
 
 **Parameters:**
-- `GlobalVoice` — Amazon Polly の音声名（日本語: `Mizuki`, `Takumi`、英語: `Joanna`, `Matthew` 等）
+- `TextToSpeechVoice` — Amazon Polly の音声名（日本語: `Mizuki`, `Takumi`、英語: `Joanna`, `Matthew` 等）
+- `TextToSpeechEngine` — 音声エンジン（`"Standard"` / `"Neural"`）
+- `TextToSpeechStyle` — 音声スタイル（`"None"` 等）
+
+**Transitions:**
+- `NextAction`: o
+- `Conditions`: -
+- `Errors`: o (`NoMatchingError`)
 
 ---
 
-## SetLoggingBehavior
+## UpdateFlowLoggingBehavior
 
 コンタクトフローのログ出力を有効/無効にする。
 
 ```json
 {
   "Identifier": "uuid",
-  "Type": "SetLoggingBehavior",
+  "Type": "UpdateFlowLoggingBehavior",
   "Parameters": {
-    "LoggingBehavior": "Enable"
+    "FlowLoggingBehavior": "Enabled"
   },
   "Transitions": {
-    "NextAction": "next-uuid",
-    "Errors": [
-      { "NextAction": "error-uuid", "ErrorType": "NoMatchingError" }
-    ]
+    "NextAction": "next-uuid"
   }
 }
 ```
 
 **Parameters:**
-- `LoggingBehavior` — `"Enable"` or `"Disable"`
+- `FlowLoggingBehavior` — `"Enabled"` or `"Disabled"`
+
+**Transitions:**
+- `NextAction`: o
+- `Conditions`: -
+- `Errors`: -
 
 ---
 
@@ -386,3 +576,8 @@ Lambda関数を呼び出す。
 **Parameters:**
 - `PhoneNumber` — E.164形式の電話番号
 - `ContactFlowId` (optional) — ウィスパーフローのARN
+
+**Transitions:**
+- `NextAction`: o
+- `Conditions`: -
+- `Errors`: o (`CallFailed`, `NoMatchingError`)

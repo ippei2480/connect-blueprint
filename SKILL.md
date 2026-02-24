@@ -10,7 +10,7 @@ license: MIT
 compatibility: Requires AWS CLI with a valid profile (connect:* permissions). Python 3.8+ for layout.py.
 metadata:
   author: ippei2480
-  version: "0.2.0"
+  version: "0.3.0"
 ---
 
 # connect-blueprint
@@ -38,6 +38,10 @@ metadata:
 - 営業時間分岐の有無
 - 外部システム連携（Lambda/DynamoDB等）
 - 既存フローとの統合有無
+- 通話録音の要否と録音対象（Agent / Customer / 両方）
+- Contact Lens 分析の有効/無効
+- 分析言語（ja-JP, en-US 等）
+- 機密情報マスキング（redaction）の要否
 
 **環境情報を取得してユーザーに見せる：**
 ```bash
@@ -59,13 +63,21 @@ aws connect list-contact-flow-modules --instance-id $INSTANCE_ID --profile $PROF
 ### Step 2: Mermaid 設計図の生成
 
 `references/mermaid_notation.md` の記法に従ってMermaid図を生成する。
-生成後、必ずユーザーにレビューを依頼し承認を得てから次のステップへ。
+
+**繰り返し処理（リトライメニュー等）は、まず `Loop` ActionType の使用を検討する。**
+Loop で実現できない場合のみ `UpdateContactAttributes` + `Compare` によるカウンタ方式を検討する。
+
+**Mermaid図は `.md` ファイルとして保存する**（例: `<flow-name>-design.md`）。
+保存後、必ずユーザーにレビューを依頼し承認を得てから次のステップへ。
 
 ### Step 3: フローJSON生成
 
 Mermaidからフロー構造を解析してJSON（Actions配列 + Transitions）を生成する。
 `references/flow_json_structure.md` の構造仕様に従う。
 `references/action_types.md` で各ActionTypeのパラメータを確認する。
+
+**フローの最初のアクションは必ず `UpdateFlowLoggingBehavior` とする。**
+`StartAction` に `UpdateFlowLoggingBehavior` のIDを設定し、その `NextAction` を本来のエントリーアクションにする。
 
 **position付与:**
 ```bash
@@ -82,6 +94,11 @@ python3 scripts/layout.py <flow.json>
 ```
 If validation returns errors, fix the flow JSON and re-validate before proceeding.
 Only deploy after validation passes with no errors.
+
+**エラーが発生した場合:**
+1. まず aws-mcp (`aws___search_documentation` / `aws___read_documentation`) で AWS 公式ドキュメントを調査する
+2. AWS公式ドキュメントに基づいて修正する
+3. 推測による修正は避ける
 
 #### Deploy
 
@@ -120,6 +137,7 @@ aws connect update-contact-flow-content \
 - `Identifier` は UUID v4 形式
 - `Version` は `"2019-10-30"` 固定
 - `StartAction` は必ず1つ
+- **`StartAction` は `UpdateFlowLoggingBehavior` にする**（ログ記録をフロー開始時に有効化）
 - 全Actionに `Transitions` 必須（`DisconnectParticipant` は空 `{}` でOK）
 
 ## Security Rules
@@ -182,6 +200,12 @@ aws connect update-contact-flow-content \
 | `Queue not found` | キューARNが不正 | `aws connect list-queues` で正しいARNを取得 |
 | `Lambda function not associated` | LambdaがConnectに未連携 | Connect管理画面でLambda関数を追加 |
 | `Access denied` | IAM権限不足 | `connect:*` 権限をIAMポリシーに追加 |
+
+### エラー調査の手順
+
+1. まず `aws-mcp` (`aws___search_documentation` / `aws___read_documentation`) で AWS 公式ドキュメントを調査する
+2. AWS公式ドキュメントに基づいて修正を行う
+3. 推測による修正は避け、必ず公式ドキュメントで裏付けを取る
 
 ### layout.py がエラーになる場合
 

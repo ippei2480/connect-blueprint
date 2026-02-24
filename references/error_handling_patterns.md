@@ -20,6 +20,26 @@
 
 入力エラー時に最大N回リトライし、超過したら切断する。
 
+### 推奨: Loop ActionType 使用（自動カウント管理）
+
+```mermaid
+graph LR
+  loop{"🔁 ループ:3回"}
+  menu{{"メニュー\nTimeout:8\nDTMF:1-2"}}
+  sorry("おつなぎできません")
+  end1(("切断"))
+
+  loop -->|"ContinueLooping"| menu
+  loop -->|"DoneLooping"| sorry
+  menu -->|"Timeout"| loop
+  menu -->|"NoMatch"| loop
+  sorry --> end1
+```
+
+**実装方法**: `Loop` ActionType で `LoopCount` を指定。`ContinueLooping` 条件でメニューに遷移し、`DoneLooping` 条件でエラーメッセージに遷移する。カウンタの手動管理が不要。
+
+### レガシー: UpdateContactAttributes + Compare（手動カウンタ）
+
 ```mermaid
 graph LR
   menu{{"メニュー\nTimeout:8\nDTMF:1-2"}}
@@ -36,7 +56,7 @@ graph LR
   sorry --> end1
 ```
 
-**実装方法**: `UpdateContactAttributes` でカウンタ属性をインクリメントし、`Compare` で判定する。
+**実装方法**: `UpdateContactAttributes` でカウンタ属性をインクリメントし、`Compare` で判定する。Loop ActionType が使えない場合の代替手段。
 
 ## パターン2: Lambda エラー時のフォールバック
 
@@ -90,7 +110,7 @@ graph LR
 
 ## アンチパターン
 
-### ❌ エラー遷移なし
+### エラー遷移なし
 ```json
 {
   "Transitions": {
@@ -100,10 +120,10 @@ graph LR
 ```
 → エラー発生時にフローが停止する。必ず `Errors` 配列を含める。
 
-### ❌ 無限ループのリトライ
+### 無限ループのリトライ
 カウンタなしでエラー → 同じメニューに戻すと無限ループになる。
-→ 必ずリトライ回数を制限する。
+→ 必ず `Loop` ActionType またはカウンタで回数を制限する。
 
-### ❌ DisconnectParticipant への遷移忘れ
+### DisconnectParticipant への遷移忘れ
 全パスが最終的に DisconnectParticipant に到達することを確認する。
 → `scripts/validate.sh` でチェック可能。

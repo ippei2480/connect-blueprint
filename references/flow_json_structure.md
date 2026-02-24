@@ -90,6 +90,32 @@
 ⚠️ **重要**: `position` は必ず `Metadata.ActionMetadata.<id>.position` に配置する。
 Action オブジェクト直下の `Metadata` は Connect API が拒否する。
 
+## ActionType別 Transitions 仕様
+
+各ActionTypeで使用できる Transitions のフィールド:
+
+| ActionType | NextAction | Conditions | Errors |
+|-----------|:---:|:---:|:---:|
+| MessageParticipant | o | - | o (NoMatchingError) |
+| GetParticipantInput (StoreInput=False) | o | o (Equals) | o (InputTimeLimitExceeded, NoMatchingCondition, NoMatchingError) |
+| GetParticipantInput (StoreInput=True) | o | - | o (InputTimeLimitExceeded, NoMatchingError) |
+| UpdateContactTargetQueue | o | - | o (NoMatchingError) |
+| TransferContactToQueue | o | - | o (QueueAtCapacity, NoMatchingError) |
+| DisconnectParticipant | - | - | - |
+| InvokeLambdaFunction | o | - | o (NoMatchingError) |
+| UpdateContactAttributes | o | - | o (NoMatchingError) |
+| Compare | o | o (Equals) | o (NoMatchingCondition) |
+| InvokeFlowModule | o | - | o (NoMatchingError) |
+| CheckHoursOfOperation | o | o (Equals: True/False) | o (NoMatchingError) |
+| Loop | o | o (ContinueLooping/DoneLooping) **必須** | - |
+| UpdateContactRecordingBehavior | o | - | o (NoMatchingError) |
+| UpdateContactRecordingAndAnalyticsBehavior | o | - | o (NoMatchingError) |
+| UpdateContactTextToSpeechVoice | o | - | o (NoMatchingError) |
+| UpdateFlowLoggingBehavior | o | - | - |
+| TransferToPhoneNumber | o | - | o (CallFailed, NoMatchingError) |
+
+- `o` = 使用可 / `-` = 使用不可・不要
+
 ## バリデーションルール
 
 1. `StartAction` で指定されたIDが `Actions` 配列内に存在すること

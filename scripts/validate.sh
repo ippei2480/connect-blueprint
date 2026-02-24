@@ -4,6 +4,7 @@
 #
 # ローカルチェック:
 #   - JSON構文 / Version / StartAction / 遷移先参照整合性 / UUID形式 / DisconnectParticipant
+#   - ActionTypeホワイトリスト / DTMFConfigurationフィールド名 / パラメータ名検証
 
 set -euo pipefail
 
@@ -131,6 +132,84 @@ if no_pos:
     w(f"{len(no_pos)} action(s) missing position metadata")
 else:
     p("All actions have position metadata")
+
+# --- New checks (v0.3.0) ---
+
+# 10. ActionType whitelist check
+KNOWN_TYPES = {
+    'MessageParticipant',
+    'GetParticipantInput',
+    'UpdateContactTargetQueue',
+    'TransferContactToQueue',
+    'DisconnectParticipant',
+    'InvokeLambdaFunction',
+    'UpdateContactAttributes',
+    'Compare',
+    'InvokeFlowModule',
+    'CheckHoursOfOperation',
+    'Loop',
+    'UpdateContactRecordingBehavior',
+    'UpdateContactRecordingAndAnalyticsBehavior',
+    'UpdateContactTextToSpeechVoice',
+    'UpdateFlowLoggingBehavior',
+    'TransferToPhoneNumber',
+}
+DEPRECATED_TYPES = {
+    'SetVoice': 'UpdateContactTextToSpeechVoice',
+    'SetLoggingBehavior': 'UpdateFlowLoggingBehavior',
+}
+type_ok = True
+for a in actions:
+    atype = a.get('Type', '')
+    if atype in DEPRECATED_TYPES:
+        f(f"Deprecated ActionType '{atype}' in {a['Identifier']} — use '{DEPRECATED_TYPES[atype]}' instead")
+        type_ok = False
+    elif atype not in KNOWN_TYPES:
+        w(f"Unknown ActionType '{atype}' in {a['Identifier']}")
+        type_ok = False
+if type_ok:
+    p("All ActionTypes are valid")
+
+# 11. DTMFConfiguration field name validation
+dtmf_ok = True
+DEPRECATED_DTMF = {
+    'FinishOnKey': 'InputTerminationSequence',
+    'InactivityTimeLimitSeconds': 'InterdigitTimeLimitSeconds',
+}
+for a in actions:
+    dtmf = a.get('Parameters', {}).get('DTMFConfiguration', {})
+    for old_name, new_name in DEPRECATED_DTMF.items():
+        if old_name in dtmf:
+            f(f"Deprecated DTMFConfiguration field '{old_name}' in {a['Identifier']} — use '{new_name}' instead")
+            dtmf_ok = False
+if dtmf_ok:
+    p("DTMFConfiguration field names are valid")
+
+# 12. UpdateFlowLoggingBehavior parameter validation
+for a in actions:
+    if a.get('Type') == 'UpdateFlowLoggingBehavior':
+        params = a.get('Parameters', {})
+        if 'LoggingBehavior' in params:
+            f(f"Deprecated parameter 'LoggingBehavior' in {a['Identifier']} — use 'FlowLoggingBehavior' instead")
+        val = params.get('FlowLoggingBehavior', '')
+        if val and val not in ('Enabled', 'Disabled'):
+            f(f"Invalid FlowLoggingBehavior value '{val}' in {a['Identifier']} — must be 'Enabled' or 'Disabled'")
+
+# 13. UpdateContactTextToSpeechVoice parameter validation
+for a in actions:
+    if a.get('Type') == 'UpdateContactTextToSpeechVoice':
+        params = a.get('Parameters', {})
+        if 'GlobalVoice' in params:
+            f(f"Deprecated parameter 'GlobalVoice' in {a['Identifier']} — use 'TextToSpeechVoice' instead")
+
+# 14. StartAction should be UpdateFlowLoggingBehavior
+if start and start in ids:
+    start_action = next((a for a in actions if a['Identifier'] == start), None)
+    if start_action and start_action.get('Type') == 'UpdateFlowLoggingBehavior':
+        p("StartAction is UpdateFlowLoggingBehavior (best practice)")
+    else:
+        start_type = start_action.get('Type', 'unknown') if start_action else 'unknown'
+        w(f"StartAction is '{start_type}' — consider using UpdateFlowLoggingBehavior as the first action")
 
 print("---")
 if errors == 0:

@@ -6,8 +6,8 @@
     "Text": "○○は1を、△△は2を押してください。",
     "DTMFConfiguration": {
       "InputTimeLimitSeconds": "8",
-      "FinishOnKey": "#",
-      "InactivityTimeLimitSeconds": "5"
+      "InputTerminationSequence": "#",
+      "InterdigitTimeLimitSeconds": "5"
     },
     "InputTimeLimitSeconds": "8"
   },

@@ -45,5 +45,5 @@ graph LR
 ## 実装のポイント
 
 - `UpdateContactAttributes` で `language` 属性を設定 → 後続のキュー転送やエージェントルーティングで活用
-- Amazon Connect の「音声の設定」ブロックで Polly の言語/音声を切り替えることも可能（`SetVoice` ActionType）
+- Amazon Connect の「音声の設定」ブロックで Polly の言語/音声を切り替えることも可能（`UpdateContactTextToSpeechVoice` ActionType）
 - 言語ごとにキューを分ける場合は `q_sales_ja` / `q_sales_en` のように分離
