@@ -64,21 +64,15 @@ Ready-to-use sample flows with Mermaid diagrams and deployable JSON:
 
 | Example | Description | Key Features |
 |---------|-------------|-------------|
-| [Business Hours Routing](examples/business-hours-routing/) | 営業時間内外の振り分け | CheckHoursOfOperation |
-| [Callback Reservation](examples/callback-reservation/) | 待ち時間が長い場合のコールバック予約 | Lambda連携, 条件分岐 |
-| [NPS Survey](examples/nps-survey/) | 通話後の顧客満足度アンケート | DTMF 0-9, Lambda記録 |
-| [VIP Escalation](examples/vip-escalation/) | VIP顧客の優先キュー振り分け | 顧客DB照合, 優先キュー |
-| [Multilingual](examples/multilingual/) | 日本語/英語の言語選択対応 | 属性設定, 言語別IVR |
-| [Inquiry Routing](examples/inquiry-routing/) | 問い合わせ種別振り分け | 4択IVR, リトライ |
+| [Business Hours Routing](examples/business-hours-routing/) | 営業時間内外の振り分け | CheckHoursOfOperation, IVR, キュー転送 |
+| [Inquiry Routing](examples/inquiry-routing/) | 問い合わせ種別振り分け | 4択IVR, UpdateContactAttributes, 複数キュー |
+| [NPS Survey](examples/nps-survey/) | 通話後の顧客満足度アンケート | DTMF 0-9, InvokeLambdaFunction |
 
 ## Scripts
 
 ```bash
 # ローカルバリデーション
 ./scripts/validate.sh flow.json
-
-# AWSバリデーション込み
-./scripts/validate.sh flow.json --aws --instance-id $INSTANCE_ID --profile $PROFILE
 
 # レイアウト座標付与
 python3 scripts/layout.py flow.json

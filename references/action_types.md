@@ -1,5 +1,44 @@
 # Connect Blueprint — Action Types リファレンス
 
+## 共通ルール
+
+### Transitions 構造
+
+すべての Action は `Transitions` オブジェクトを持つ（`DisconnectParticipant` は空 `{}` でOK）。
+
+| フィールド | 役割 |
+|-----------|------|
+| `NextAction` | デフォルト遷移先（タイムアウト時・正常完了時） |
+| `Conditions` | 条件分岐（DTMF値、属性比較、ループ状態など） |
+| `Errors` | エラー発生時の遷移先 |
+
+### Conditions が必要な ActionType
+
+以下の ActionType は `Conditions` を設定しないと分岐が機能しない：
+
+| ActionType | 必須 Conditions | 備考 |
+|-----------|----------------|------|
+| `GetParticipantInput` (StoreInput=False) | DTMF値ごとの `Equals` | IVRメニューモード |
+| `Compare` | 最低1つの `Equals` 条件 | 属性値の比較分岐 |
+| `CheckHoursOfOperation` | `True` + `False` の両方 | 営業時間内外の分岐 |
+| `Loop` | `ContinueLooping` + `DoneLooping` の両方 | ループ継続・終了の分岐 |
+
+上記以外の ActionType は `Conditions` 非対応。設定しても無視されるか、予期しない動作の原因となる。
+
+### Errors 共通ルール
+
+- `DisconnectParticipant` と `UpdateFlowLoggingBehavior` 以外は `Errors` 必須
+- `NoMatchingError` はキャッチオールとして常に含める
+
+### パラメータ値の型
+
+すべてのパラメータ値は **文字列型** で指定する（数値・真偽値も文字列）：
+- 数値: `"8"`, `"3"`, `"5"`
+- 真偽値: `"True"`, `"False"`
+- 列挙値: `"Enabled"`, `"Disabled"`, `"Standard"`, `"Neural"`
+
+---
+
 ## MessageParticipant
 
 テキストまたはSSMLを再生する。

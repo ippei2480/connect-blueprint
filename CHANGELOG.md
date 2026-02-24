@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.4.0] - 2026-02-24
+
+### Changed
+- `references/action_types.md` に共通ルールセクション新設（Transitions構造、Conditions必須ActionType一覧、Errors共通ルール、パラメータ値の型ルール）
+- `references/flow_json_structure.md` に Conditions必須ルール・Errors必須ルール・バリデーションルール6-10を追加
+- `references/error_handling_patterns.md` に StoreInput=True時のErrorType制約・Conditions欠落アンチパターンを追加
+- `SKILL.md` にKey Constraints（Conditions必須ActionType、StoreInput使い分け）とTroubleshooting 3項目を追加
+- `SKILL.md` のテンプレート参照をサンプル参照に変更、Examples テーブルを3サンプルに更新
+- `README.md` の Examples テーブルを3サンプルに更新、`--aws` フラグ参照を削除
+
+### Removed
+- `templates/` ディレクトリ削除（action_types.md のスニペットと役割重複のため）
+- `examples/callback-reservation/` 削除（Lambda+Compare パターンが inquiry-routing と重複）
+- `examples/multilingual/` 削除（IVR+属性パターンが business-hours-routing と重複）
+- `examples/vip-escalation/` 削除（Lambda+Compare パターンが callback-reservation と重複）
+
+### Added
+- `scripts/validate.sh` に Check #15 追加: ActionType別 Transitions 制約チェック
+  - Loop: ContinueLooping + DoneLooping 両方必須
+  - CheckHoursOfOperation: True + False 両方必須
+  - Compare: 最低1条件必須
+  - GetParticipantInput + StoreInput=True: Conditions 不可
+  - Conditions 非対応 ActionType: Conditions 設定検出
+
 ## [0.3.0] - 2026-02-24
 
 ### Fixed

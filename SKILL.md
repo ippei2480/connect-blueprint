@@ -10,7 +10,7 @@ license: MIT
 compatibility: Requires AWS CLI with a valid profile (connect:* permissions). Python 3.8+ for layout.py.
 metadata:
   author: ippei2480
-  version: "0.3.0"
+  version: "0.4.0"
 ---
 
 # connect-blueprint
@@ -139,6 +139,8 @@ aws connect update-contact-flow-content \
 - `StartAction` は必ず1つ
 - **`StartAction` は `UpdateFlowLoggingBehavior` にする**（ログ記録をフロー開始時に有効化）
 - 全Actionに `Transitions` 必須（`DisconnectParticipant` は空 `{}` でOK）
+- **Conditions 必須 ActionType**: `Loop`（ContinueLooping + DoneLooping）、`CheckHoursOfOperation`（True + False）、`Compare`（最低1条件）
+- **StoreInput 使い分け**: IVRメニュー（選択肢分岐）は `StoreInput: "False"` + Conditions、自由入力（番号保存）は `StoreInput: "True"` + Conditions なし
 
 ## Security Rules
 
@@ -151,10 +153,10 @@ aws connect update-contact-flow-content \
 - `scripts/validate.sh <file>` によるローカルバリデーション
 - `python3 scripts/layout.py <file>` によるレイアウト座標付与
 - フローJSONの作成・編集
-- テンプレートの参照・コピー
+- サンプルフローの参照
 
-### テンプレートとプレースホルダー
-- テンプレートやサンプルの `<YOUR_XXX_ARN>` プレースホルダーを実際の ARN に置き換える際は、ユーザーから提供された値のみ使用すること
+### プレースホルダー
+- サンプルの `<YOUR_XXX_ARN>` プレースホルダーを実際の ARN に置き換える際は、ユーザーから提供された値のみ使用すること
 - 推測や仮の値で ARN を埋めないこと
 
 ### コーディング規約
@@ -181,12 +183,9 @@ aws connect update-contact-flow-content \
 
 | ディレクトリ | ユースケース |
 |-------------|-------------|
-| `business-hours-routing/` | 営業時間内外振り分け |
-| `callback-reservation/` | コールバック予約 |
-| `nps-survey/` | 顧客満足度アンケート（NPS） |
-| `vip-escalation/` | VIP顧客エスカレーション |
-| `multilingual/` | 多言語対応（日本語/英語） |
-| `inquiry-routing/` | 問い合わせ種別振り分け |
+| `business-hours-routing/` | 営業時間内外振り分け（CheckHoursOfOperation, IVR, キュー転送） |
+| `inquiry-routing/` | 問い合わせ種別振り分け（4択IVR, UpdateContactAttributes, 複数キュー） |
+| `nps-survey/` | 顧客満足度アンケート（DTMF 0-9, InvokeLambdaFunction） |
 
 ## Troubleshooting
 
@@ -200,6 +199,9 @@ aws connect update-contact-flow-content \
 | `Queue not found` | キューARNが不正 | `aws connect list-queues` で正しいARNを取得 |
 | `Lambda function not associated` | LambdaがConnectに未連携 | Connect管理画面でLambda関数を追加 |
 | `Access denied` | IAM権限不足 | `connect:*` 権限をIAMポリシーに追加 |
+| `Conditions required for Loop` | Loop に ContinueLooping/DoneLooping が不足 | 両方の Conditions を追加 |
+| `StoreInput + Conditions conflict` | GetParticipantInput で StoreInput=True と Conditions を併用 | StoreInput=True なら Conditions を削除、IVRメニューなら StoreInput を削除 |
+| `Missing True/False conditions` | CheckHoursOfOperation に True/False の Conditions が不足 | True と False の両方の Conditions を追加 |
 
 ### エラー調査の手順
 

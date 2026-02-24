@@ -211,6 +211,51 @@ if start and start in ids:
         start_type = start_action.get('Type', 'unknown') if start_action else 'unknown'
         w(f"StartAction is '{start_type}' — consider using UpdateFlowLoggingBehavior as the first action")
 
+# 15. ActionType-specific Transitions validation
+TRANSITIONS_SPEC = {
+    'Loop': {'conditions_required': True, 'required_conditions': {'ContinueLooping', 'DoneLooping'}},
+    'CheckHoursOfOperation': {'conditions_required': True, 'required_conditions': {'True', 'False'}},
+    'Compare': {'conditions_required': True, 'required_conditions': None},
+}
+NO_CONDITIONS_TYPES = {
+    'MessageParticipant', 'UpdateContactTargetQueue', 'TransferContactToQueue',
+    'DisconnectParticipant', 'InvokeLambdaFunction', 'UpdateContactAttributes',
+    'InvokeFlowModule', 'UpdateContactRecordingBehavior',
+    'UpdateContactRecordingAndAnalyticsBehavior', 'UpdateContactTextToSpeechVoice',
+    'UpdateFlowLoggingBehavior', 'TransferToPhoneNumber',
+}
+transitions_ok = True
+for a in actions:
+    atype = a.get('Type', '')
+    t = a.get('Transitions', {})
+    conds = t.get('Conditions', [])
+    cond_values = {c.get('Condition', {}).get('Operands', [''])[0] for c in conds}
+
+    if atype in TRANSITIONS_SPEC:
+        spec = TRANSITIONS_SPEC[atype]
+        if spec['required_conditions'] is not None:
+            missing = spec['required_conditions'] - cond_values
+            if missing:
+                f(f"{atype} in {a['Identifier']} missing required Conditions: {', '.join(sorted(missing))}")
+                transitions_ok = False
+        else:
+            if not conds:
+                f(f"{atype} in {a['Identifier']} requires at least one Condition")
+                transitions_ok = False
+
+    if atype == 'GetParticipantInput':
+        store_input = a.get('Parameters', {}).get('StoreInput', 'False')
+        if store_input == 'True' and conds:
+            f(f"GetParticipantInput with StoreInput=True in {a['Identifier']} must not have Conditions")
+            transitions_ok = False
+
+    if atype in NO_CONDITIONS_TYPES and conds:
+        f(f"{atype} in {a['Identifier']} does not support Conditions")
+        transitions_ok = False
+
+if transitions_ok:
+    p("ActionType-specific Transitions constraints are valid")
+
 print("---")
 if errors == 0:
     print(f"{GREEN}All checks passed!{NC}")

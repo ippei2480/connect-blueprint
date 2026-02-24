@@ -1,7 +1,0 @@
-{
-  "_description": "切断テンプレート — 全フローの終端に配置",
-  "Identifier": "<UUID>",
-  "Type": "DisconnectParticipant",
-  "Parameters": {},
-  "Transitions": {}
-}

@@ -16,6 +16,16 @@
 | `QueueAtCapacity` | TransferContactToQueue | キューが満杯 |
 | `NoMatchingError` | InvokeLambdaFunction | Lambda実行エラー |
 
+### GetParticipantInput + StoreInput=True 時の ErrorType
+
+`StoreInput: "True"` の場合、Conditions を使用しないため `NoMatchingCondition` は発生しない。
+
+| ErrorType | 発生する | 説明 |
+|-----------|:---:|------|
+| `InputTimeLimitExceeded` | o | 入力タイムアウト |
+| `NoMatchingError` | o | 想定外のエラー |
+| `NoMatchingCondition` | - | Conditions 未使用のため発生しない |
+
 ## パターン1: リトライ付きIVRメニュー
 
 入力エラー時に最大N回リトライし、超過したら切断する。
@@ -126,4 +136,20 @@ graph LR
 
 ### DisconnectParticipant への遷移忘れ
 全パスが最終的に DisconnectParticipant に到達することを確認する。
+→ `scripts/validate.sh` でチェック可能。
+
+### Conditions 欠落（分岐 ActionType）
+`CheckHoursOfOperation` / `Compare` / `Loop` で Conditions を設定しないと、分岐が機能せず常に `NextAction`（デフォルト）に遷移する。
+```json
+{
+  "Type": "CheckHoursOfOperation",
+  "Transitions": {
+    "NextAction": "default-uuid",
+    "Errors": [{ "NextAction": "error-uuid", "ErrorType": "NoMatchingError" }]
+  }
+}
+```
+→ `CheckHoursOfOperation` には `True` / `False` の両 Conditions が必須。
+→ `Loop` には `ContinueLooping` / `DoneLooping` の両 Conditions が必須。
+→ `Compare` には最低1つの Conditions が必須。
 → `scripts/validate.sh` でチェック可能。
