@@ -6,8 +6,22 @@ description: >
   (2) converting draw.io/Mermaid diagrams or images into flow JSON,
   (3) deploying flows to AWS via CLI, (4) updating existing flows.
   Covers IVR menus, queue routing, Lambda integration, business hours checks, and flow modules.
+  Keywords: コンタクトフロー設計, IVR構築, コールフロー生成, Amazon Connect フロー JSON.
 license: MIT
 compatibility: Requires AWS CLI with a valid profile (connect:* permissions). Python 3.8+ for layout.py.
+disable-model-invocation: true
+allowed-tools: >
+  Bash(./scripts/validate.sh *)
+  Bash(python3 scripts/layout.py *)
+  Bash(aws connect list-*)
+  Bash(aws connect describe-*)
+  Bash(aws connect get-*)
+  Bash(aws connect search-*)
+  Bash(aws connect batch-get-*)
+  Bash(aws connect batch-describe-*)
+  Bash(aws sts get-caller-identity *)
+  aws-mcp:aws___read_documentation
+  aws-mcp:aws___search_documentation
 metadata:
   author: ippei2480
   version: "0.6.0"
@@ -30,6 +44,16 @@ metadata:
 
 ## Mode A: Design from Scratch
 
+### Progress Tracking
+
+各ステップ完了時にチェックし、現在の進捗を把握する：
+- [ ] Step 1: 要件ヒアリング完了
+- [ ] Step 2: Mermaid 設計図作成 → ユーザー承認済み
+- [ ] Step 3: フロー JSON 生成 + AWS MCP パラメータ検証完了
+- [ ] Step 4a: ローカルバリデーション通過
+- [ ] Step 4b: (任意) API バリデーション通過
+- [ ] Step 4c: デプロイ → ユーザー承認 → 完了
+
 ### Step 1: 要件ヒアリング
 
 以下を確認する：
@@ -44,19 +68,8 @@ metadata:
 - 機密情報マスキング（redaction）の要否
 
 **環境情報を取得してユーザーに見せる：**
-```bash
-# キュー一覧
-aws connect list-queues --instance-id $INSTANCE_ID --queue-types STANDARD --profile $PROFILE
-
-# プロンプト一覧
-aws connect list-prompts --instance-id $INSTANCE_ID --profile $PROFILE
-
-# Lambda一覧（Connect連携済み）
-aws connect list-lambda-functions --instance-id $INSTANCE_ID --profile $PROFILE
-
-# フローモジュール一覧
-aws connect list-contact-flow-modules --instance-id $INSTANCE_ID --profile $PROFILE
-```
+`references/aws_cli_commands.md` の「環境情報の取得」セクションのコマンドで以下を取得し、ユーザーに提示する：
+- キュー一覧、プロンプト一覧、Lambda一覧、フローモジュール一覧
 
 実現不可能な要件があれば**この段階で明示してユーザーに伝える**。
 
@@ -104,6 +117,15 @@ python3 scripts/layout.py <flow.json>
 If validation returns errors, fix the flow JSON and re-validate before proceeding.
 Only deploy after validation passes with no errors.
 
+#### Validation Feedback Loop
+1. `./scripts/validate.sh flow.json` を実行
+2. エラーがある場合:
+   a. エラーメッセージを解析
+   b. `aws___read_documentation` で公式仕様を確認
+   c. フローJSONを修正
+   d. 手順 1 に戻り再実行する
+3. エラーなしになるまで繰り返す（最大3回。超過時はユーザーに報告）
+
 #### APIバリデーション (recommended)
 ```bash
 ./scripts/validate.sh --api --instance-id $INSTANCE_ID --profile $PROFILE flow.json
@@ -112,40 +134,10 @@ Only deploy after validation passes with no errors.
 
 > **Why:** ローカルチェックはJSON構造・遷移参照の整合性のみ検証する。ActionType固有のパラメータ制約やErrors/Conditionsの妥当性はConnect API側でしか検証できないため、APIバリデーションで事前にエラーを検出する。
 
-**エラーが発生した場合:**
-1. まず aws-mcp (`aws___search_documentation` / `aws___read_documentation`) で AWS 公式ドキュメントを調査する
-2. AWS公式ドキュメントに基づいて修正する
-3. 推測による修正は避ける
-
 #### Deploy
 
-```bash
-# Create new flow（SAVED → ACTIVE の2ステップ）
-# Step 1: SAVED状態で作成
-aws connect create-contact-flow \
-  --instance-id $INSTANCE_ID \
-  --name "Flow Name" \
-  --type CONTACT_FLOW \
-  --content "$(cat flow.json)" \
-  --status SAVED \
-  --profile $PROFILE
-
-# Step 2: ACTIVE状態に変更（$FLOW_ID は Step 1 の出力から取得）
-aws connect update-contact-flow-metadata \
-  --instance-id $INSTANCE_ID \
-  --contact-flow-id $FLOW_ID \
-  --contact-flow-state ACTIVE \
-  --profile $PROFILE
-
-# Update existing flow
-aws connect update-contact-flow-content \
-  --instance-id $INSTANCE_ID \
-  --contact-flow-id $FLOW_ID \
-  --content "$(cat flow.json)" \
-  --profile $PROFILE
-```
-
-> **Note:** `create-contact-flow` をデフォルト（PUBLISHED）で実行すると `InvalidContactFlowException` になる場合がある。`--status SAVED` → `update-contact-flow-metadata --contact-flow-state ACTIVE` の2ステップ方式を使用する。
+`references/aws_cli_commands.md` の「フロー操作」セクションのコマンドでデプロイする。
+2ステップ方式: `--status SAVED` で作成 → `update-contact-flow-metadata --contact-flow-state ACTIVE` で公開。
 
 ## Mode B: Convert from Diagram
 
@@ -158,99 +150,51 @@ aws connect update-contact-flow-content \
 
 ## Key Constraints
 
-- `position` は **`Metadata.ActionMetadata.<id>.position`** に入れる（Action直下のMetadataは Connect API が拒否する）
-- `Identifier` は UUID v4 形式
-- `Version` は `"2019-10-30"` 固定
-- `StartAction` は必ず1つ
-- **`StartAction` は `UpdateFlowLoggingBehavior` にする**（ログ記録をフロー開始時に有効化）
-- 全Actionに `Transitions` 必須（`DisconnectParticipant` は空 `{}` でOK）
-- **Conditions 必須 ActionType**: `Loop`（ContinueLooping + DoneLooping）、`CheckHoursOfOperation`（True + False）、`Compare`（最低1条件）
-- **StoreInput 使い分け**: IVRメニュー（選択肢分岐）は `StoreInput: "False"` + Conditions、自由入力（番号保存）は `StoreInput: "True"` + Conditions なし
+`references/flow_json_structure.md` と `references/action_types.md` の共通ルールに従う。
+以下はフロー生成時に特に重要な制約：
+- **StartAction は UpdateFlowLoggingBehavior にする**
 - **サンプルフローは提供しない** — 要件に応じてゼロから設計すること
 
 ## Security Rules
 
-### デプロイ操作の安全ガード
+### Deploy Safety Guard
 - `scripts/deploy.sh` の実行、または `aws connect create-contact-flow` / `aws connect update-contact-flow-content` コマンドの実行前に、**必ずユーザーの明示的な承認を得ること**
 - `.env` ファイルや AWS クレデンシャルファイル（`~/.aws/credentials` 等）を読み取らないこと
 
-### 安全な操作（確認不要）
+### Safe Operations (No Confirmation Required)
 - `scripts/validate.sh <file>` によるローカルバリデーション（`--api` オプション含む。下書き保存は自動削除される）
 - `python3 scripts/layout.py <file>` によるレイアウト座標付与
 - フローJSONの作成・編集
 
-### プレースホルダー
+### Placeholders
 - `<YOUR_XXX_ARN>` プレースホルダーを実際の ARN に置き換える際は、ユーザーから提供された値のみ使用すること
 - 推測や仮の値で ARN を埋めないこと
 
-### コーディング規約
+### Coding Conventions
 - シェルスクリプト: 変数は必ずダブルクォートで囲む。AWS CLI 引数の組み立てには bash 配列を使用する
 - Python: 標準ライブラリのみ使用（外部パッケージ不可）
 - JSON: テンプレートでは実際の ARN/ID を使用せず `<YOUR_XXX>` プレースホルダーを使う
 
 ## Validation
 
-3層バリデーション構造でフローの品質を保証する：
-
-### Layer 1: AWS MCP パラメータ検証
-
-フローJSON生成時に AWS MCP (`aws___read_documentation`) で各ActionTypeのパラメータ仕様を確認する。
-
-- `references/action_types.md` の AWS Docs パス対応テーブルからURLパスを取得
-- パラメータ名・型・必須/任意をドキュメントで照合
-- 推測によるパラメータ設定を回避
-
-### Layer 2: ローカルバリデーション
-
-```bash
-./scripts/validate.sh flow.json
-```
-
-JSON構造・遷移参照整合性・ActionType制約・孤立ブロック・デッドエンドを検出する。
-
-### Layer 3: Connect API バリデーション
-
-```bash
-./scripts/validate.sh --api --instance-id $INSTANCE_ID --profile $PROFILE flow.json
-```
-
-ローカルチェックでは検出できないActionType固有のパラメータ制約やErrors/Conditionsの妥当性をConnect APIが検証する。`--status SAVED`（下書き保存）で作成するため本番に影響しない。
+3層バリデーションでフロー品質を保証する:
+1. **AWS MCP**: `aws___read_documentation` で ActionType パラメータ仕様を確認（フロー生成時）
+2. **ローカル**: `./scripts/validate.sh flow.json` で構造・遷移・孤立ブロック・デッドエンド検出
+3. **Connect API**: `./scripts/validate.sh --api --instance-id $ID --profile $P flow.json` で API 側の制約を検証
 
 ## Troubleshooting
 
-### よくあるエラーと対処法
-
-| エラー | 原因 | 対処 |
-|--------|------|------|
-| `Invalid flow content` | JSON構造の不備 | `./scripts/validate.sh` でチェック |
-| `Position metadata in wrong location` | Action直下にMetadataを配置 | `Metadata.ActionMetadata.<id>.position` に移動 |
-| `StartAction not found` | StartActionのIDがActions内に存在しない | UUIDの一致を確認 |
-| `Queue not found` | キューARNが不正 | `aws connect list-queues` で正しいARNを取得 |
-| `Lambda function not associated` | LambdaがConnectに未連携 | Connect管理画面でLambda関数を追加 |
-| `Access denied` | IAM権限不足 | `connect:*` 権限をIAMポリシーに追加 |
-| `Conditions required for Loop` | Loop に ContinueLooping/DoneLooping が不足 | 両方の Conditions を追加 |
-| `StoreInput + Conditions conflict` | GetParticipantInput で StoreInput=True と Conditions を併用 | StoreInput=True なら Conditions を削除、IVRメニューなら StoreInput を削除 |
-| `Missing True/False conditions` | CheckHoursOfOperation に True/False の Conditions が不足 | True と False の両方の Conditions を追加 |
-| `InvalidContactFlowException on create` | `create-contact-flow` デフォルト（PUBLISHED）で失敗 | `--status SAVED` → `update-contact-flow-metadata --contact-flow-state ACTIVE` の2ステップで作成 |
-
-### エラー調査の手順
-
-1. まず `aws-mcp` (`aws___search_documentation` / `aws___read_documentation`) で AWS 公式ドキュメントを調査する
-2. `references/action_types.md` の AWS Docs パス対応テーブルで該当ActionTypeのドキュメントパスを確認
-3. AWS公式ドキュメントに基づいて修正を行う
-4. 推測による修正は避け、必ず公式ドキュメントで裏付けを取る
-
-### layout.py がエラーになる場合
-
-- Python 3.8以上が必要
-- 標準ライブラリのみ使用（追加インストール不要）
-- 入力JSONが正しい構造か `validate.sh` で事前確認
+エラー発生時の対処:
+1. `references/error_handling_patterns.md` でパターンを確認
+2. `aws___search_documentation` / `aws___read_documentation` で公式ドキュメントを調査
+3. 推測による修正は避け、必ず公式ドキュメントで裏付けを取る
 
 ## References
 
-- Action Types詳細: `references/action_types.md`
-- フローJSON構造: `references/flow_json_structure.md`
-- Mermaid記法: `references/mermaid_notation.md`
-- AWS CLIコマンド: `references/aws_cli_commands.md`
-- レイアウトルール: `references/layout_rules.md`
-- エラーハンドリング: `references/error_handling_patterns.md`
+- Action Types: `references/action_types.md`
+- Flow JSON Structure: `references/flow_json_structure.md`
+- Mermaid Notation: `references/mermaid_notation.md`
+- AWS CLI Commands: `references/aws_cli_commands.md`
+- Layout Rules: `references/layout_rules.md`
+- Error Handling Patterns: `references/error_handling_patterns.md`
+- Connect Limits: `references/connect_limits.md`

@@ -1,3 +1,5 @@
+> **Note:** 以下の制限値は 2026年2月時点の情報。最新値は AWS 公式ドキュメントまたは `aws___read_documentation` で確認すること。
+
 # Connect Blueprint — Amazon Connect の制限・注意点
 
 ## フロー関連の制限

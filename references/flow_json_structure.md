@@ -1,5 +1,13 @@
 # Connect Blueprint — フローJSON構造仕様
 
+## 目次
+
+- [トップレベル構造](#トップレベル構造)
+- [Action オブジェクト](#action-オブジェクト)
+- [Transitions](#transitions)
+- [Metadata](#metadata)
+- [バリデーションルール](#バリデーションルール)
+
 ## トップレベル構造
 
 ```json

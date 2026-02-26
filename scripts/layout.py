@@ -87,20 +87,24 @@ def layout(flow):
     id_to_action = {a['Identifier']: a for a in actions}
     entry_id = flow.get('StartAction')
 
-    # DFS でバックエッジ検出
-    sys.setrecursionlimit(1000)
+    # 反復 DFS でバックエッジ検出
     visited, in_stack, back_edges = set(), set(), set()
-
-    def dfs(node):
-        visited.add(node); in_stack.add(node)
+    stack = [(entry_id, False)]
+    while stack:
+        node, returning = stack.pop()
+        if returning:
+            in_stack.discard(node)
+            continue
+        if node in visited:
+            continue
+        visited.add(node)
+        in_stack.add(node)
+        stack.append((node, True))
         for nid in get_all_next(id_to_action.get(node, {}), id_to_action):
             if nid not in visited:
-                dfs(nid)
+                stack.append((nid, False))
             elif nid in in_stack:
                 back_edges.add((node, nid))
-        in_stack.discard(node)
-
-    dfs(entry_id)
 
     def get_edges_dag(action):
         aid = action['Identifier']
