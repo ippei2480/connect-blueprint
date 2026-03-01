@@ -49,7 +49,7 @@ metadata:
 各ステップ完了時にチェックし、現在の進捗を把握する：
 - [ ] Step 1: 要件ヒアリング完了
 - [ ] Step 2: Mermaid 設計図作成 → ユーザー承認済み
-- [ ] Step 3: フロー JSON 生成 + AWS MCP パラメータ検証完了
+- [ ] Step 3: フロー JSON 生成 + パラメータ検証完了
 - [ ] Step 4a: ローカルバリデーション通過
 - [ ] Step 4b: (任意) API バリデーション通過
 - [ ] Step 4c: デプロイ → ユーザー承認 → 完了
@@ -91,15 +91,15 @@ Mermaidからフロー構造を解析してJSON（Actions配列 + Transitions）
 **フローの最初のアクションは必ず `UpdateFlowLoggingBehavior` とする。**
 `StartAction` に `UpdateFlowLoggingBehavior` のIDを設定し、その `NextAction` を本来のエントリーアクションにする。
 
-#### AWS MCP Parameter Validation
+#### Parameter Validation
 
-各ActionTypeのパラメータを設定する際、`references/action_types.md` の共通ルールを確認した上で、AWS MCP で公式ドキュメントを参照してパラメータの正確性を保証する：
+各ActionTypeのパラメータを設定する際、`references/action_types.md` の共通ルールを確認した上で、ローカルキャッシュでパラメータの正確性を保証する：
 
-1. `references/action_types.md` の AWS Docs パス対応テーブルから該当URLパスを取得
-2. `aws___read_documentation` でパラメータ仕様を確認
+1. `references/params/*.md` のローカルキャッシュで該当ActionTypeのパラメータ仕様を確認する
+2. キャッシュにない情報、またはキャッシュ通りに設定してもバリデーションエラーが発生する場合は `aws___read_documentation` でフォールバック参照する
 3. ドキュメントに基づいてパラメータを設定する
 
-> **Why:** ローカルリファレンスはパラメータの概要のみ記載。正確なフィールド名・型・制約は AWS 公式ドキュメントが信頼できるソース。
+> **Why:** `references/params/` に全54ブロックタイプの詳細パラメータ仕様をキャッシュ済み。AWS MCP呼び出しを不要にしてレートリミットを回避する。
 
 **position付与:**
 ```bash
@@ -121,7 +121,7 @@ Only deploy after validation passes with no errors.
 1. `./scripts/validate.sh flow.json` を実行
 2. エラーがある場合:
    a. エラーメッセージを解析
-   b. `aws___read_documentation` で公式仕様を確認
+   b. `references/params/*.md` でパラメータ仕様を確認（不足時またはキャッシュ通りでもエラーが解消しない場合は `aws___read_documentation` で最新仕様をフォールバック参照）
    c. フローJSONを修正
    d. 手順 1 に戻り再実行する
 3. エラーなしになるまで繰り返す（最大3回。超過時はユーザーに報告）
@@ -178,20 +178,22 @@ Only deploy after validation passes with no errors.
 ## Validation
 
 3層バリデーションでフロー品質を保証する:
-1. **AWS MCP**: `aws___read_documentation` で ActionType パラメータ仕様を確認（フロー生成時）
-2. **ローカル**: `./scripts/validate.sh flow.json` で構造・遷移・孤立ブロック・デッドエンド検出
+1. **ローカルキャッシュ**: `references/params/*.md` で ActionType パラメータ仕様を確認（フロー生成時）
+2. **ローカルスクリプト**: `./scripts/validate.sh flow.json` で構造・遷移・孤立ブロック・デッドエンド検出
 3. **Connect API**: `./scripts/validate.sh --api --instance-id $ID --profile $P flow.json` で API 側の制約を検証
 
 ## Troubleshooting
 
 エラー発生時の対処:
 1. `references/error_handling_patterns.md` でパターンを確認
-2. `aws___search_documentation` / `aws___read_documentation` で公式ドキュメントを調査
-3. 推測による修正は避け、必ず公式ドキュメントで裏付けを取る
+2. `references/params/*.md` のローカルキャッシュで仕様を確認
+3. キャッシュで解決しない場合（情報不足・キャッシュと実動作の乖離）は `aws___search_documentation` / `aws___read_documentation` で公式ドキュメントを調査
+4. 推測による修正は避け、必ずドキュメントで裏付けを取る
 
 ## References
 
 - Action Types: `references/action_types.md`
+- Block Parameters (cached): `references/params/` (interact / routing / transfer / data / settings / integration / security)
 - Flow JSON Structure: `references/flow_json_structure.md`
 - Mermaid Notation: `references/mermaid_notation.md`
 - AWS CLI Commands: `references/aws_cli_commands.md`

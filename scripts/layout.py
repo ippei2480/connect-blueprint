@@ -47,9 +47,9 @@ def resolve_overlaps(positions):
     BLOCK_WIDTH = 210
     BLOCK_HEIGHT = 160
     MARGIN_X = 20
-    MARGIN_Y = 20
+    MARGIN_Y = 80
     MIN_X_SPACING = BLOCK_WIDTH + MARGIN_X   # 230
-    MIN_Y_SPACING = BLOCK_HEIGHT + MARGIN_Y  # 180
+    MIN_Y_SPACING = BLOCK_HEIGHT + MARGIN_Y  # 240
 
     changed = True
     max_iter = 200
@@ -135,7 +135,7 @@ def layout(flow):
 
     # Y座標計算
     X_BASE, X_STEP = 200, 320
-    Y_BASE, Y_STEP = 300, 200
+    Y_BASE, Y_STEP = 300, 280
 
     node_y = {entry_id: Y_BASE}
     sorted_actions = sorted(actions, key=lambda a: depth.get(a['Identifier'], 0))

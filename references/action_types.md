@@ -22,6 +22,9 @@
 | `Compare` | 最低1つの `Equals` 条件 | 属性値の比較分岐 |
 | `CheckHoursOfOperation` | `True` + `False` の両方 | 営業時間内外の分岐 |
 | `Loop` | `ContinueLooping` + `DoneLooping` の両方 | ループ継続・終了の分岐 |
+| `CheckMetricData` | メトリクス条件 | キュー状態・スタッフ判定 |
+| `CheckOutboundCallStatus` | `CallConnected` 等 | 発信結果の分岐 |
+| `DistributeByPercentage` | パーセンテージ条件 | 割合分岐 |
 
 上記以外の ActionType は `Conditions` 非対応。設定しても無視されるか、予期しない動作の原因となる。
 
@@ -41,34 +44,108 @@
 
 ## ActionType × AWS Docs パス対応テーブル
 
-各ActionTypeのパラメータ・Transitions・Errors の正確な仕様は AWS MCP で参照する。
+各ActionTypeの詳細パラメータ仕様は `references/params/` のローカルキャッシュを参照する。
+キャッシュにない情報が必要な場合のみ AWS MCP (`aws___read_documentation`) をフォールバックとして使用する。
 
-| ActionType | AWS Docs パス |
-|-----------|--------------|
-| `MessageParticipant` | `amazonconnect/latest/adminguide/play-prompt.html` |
-| `GetParticipantInput` | `amazonconnect/latest/adminguide/get-customer-input.html` |
-| `UpdateContactTargetQueue` | `amazonconnect/latest/adminguide/set-working-queue.html` |
-| `TransferContactToQueue` | `amazonconnect/latest/adminguide/transfer-to-queue.html` |
-| `DisconnectParticipant` | `amazonconnect/latest/adminguide/disconnect-hang-up.html` |
-| `InvokeLambdaFunction` | `amazonconnect/latest/adminguide/invoke-lambda-function-block.html` |
-| `UpdateContactAttributes` | `amazonconnect/latest/adminguide/set-contact-attributes.html` |
-| `Compare` | `amazonconnect/latest/adminguide/check-contact-attributes.html` |
-| `InvokeFlowModule` | `amazonconnect/latest/adminguide/invoke-module.html` |
-| `CheckHoursOfOperation` | `amazonconnect/latest/adminguide/check-hours-of-operation.html` |
-| `Loop` | `amazonconnect/latest/adminguide/loop.html` |
-| `UpdateContactRecordingBehavior` | `amazonconnect/latest/adminguide/set-recording-behavior.html` |
-| `UpdateContactRecordingAndAnalyticsBehavior` | `amazonconnect/latest/adminguide/set-recording-behavior.html` |
-| `UpdateContactTextToSpeechVoice` | `amazonconnect/latest/adminguide/set-voice.html` |
-| `UpdateFlowLoggingBehavior` | `amazonconnect/latest/adminguide/set-logging-behavior.html` |
-| `TransferToPhoneNumber` | `amazonconnect/latest/adminguide/transfer-to-phone-number.html` |
+### Interact — 顧客対話・入出力系 (`references/params/interact.md`)
 
-### AWS MCP での参照手順
+| UIブロック名 | ActionType | AWS Docs パス |
+|-------------|-----------|--------------|
+| Play prompt | `MessageParticipant` | `play.html` |
+| Get customer input | `GetParticipantInput` / `ConnectParticipantWithLexBot` | `get-customer-input.html` |
+| Store customer input | `StoreUserInput` | `store-customer-input.html` |
+| Loop prompts | `LoopPrompts` | `loop-prompts.html` |
+| Send message | `SendMessage` | `send-message.html` |
+| Wait | `Wait` | `wait.html` |
+| Show view | `ShowView` | `show-view-block.html` |
+| Get stored content | `LoadContactContent` | `get-stored-content.html` |
+| Data Table | `EvaluateDataTable` / `ListDataTable` / `WriteDataTable` | `data-table-block.html` |
 
-1. `aws___read_documentation` でパスを指定して公式ドキュメントを取得する
-2. パラメータ名・型・必須/任意を確認する
+### Routing — ルーティング・キュー系 (`references/params/routing.md`)
+
+| UIブロック名 | ActionType | AWS Docs パス |
+|-------------|-----------|--------------|
+| Set working queue | `UpdateContactTargetQueue` | `set-working-queue.html` |
+| Check queue status | `CheckMetricData` | `check-queue-status.html` |
+| Check staffing | `CheckMetricData` | `check-staffing.html` |
+| Get metrics | `GetMetricData` | `get-queue-metrics.html` |
+| Check hours of operation | `CheckHoursOfOperation` | `check-hours-of-operation.html` |
+| Set routing criteria | `UpdateRoutingCriteria` | `set-routing-criteria.html` |
+| Change routing priority / age | `UpdateContactRoutingBehavior` | `change-routing-priority.html` |
+| Set customer queue flow | `UpdateContactEventHooks` | `set-customer-queue-flow.html` |
+| Distribute by percentage | `DistributeByPercentage` | `distribute-by-percentage.html` |
+
+### Transfer — 転送・発信系 (`references/params/transfer.md`)
+
+| UIブロック名 | ActionType | AWS Docs パス |
+|-------------|-----------|--------------|
+| Transfer to queue | `TransferContactToQueue` | `transfer-to-queue.html` |
+| Transfer to phone number | `TransferToPhoneNumber` | `transfer-to-phone-number.html` |
+| Transfer to flow | `TransferToFlow` | `transfer-to-flow.html` |
+| Transfer to agent (beta) | `TransferContactToAgent` | `transfer-to-agent-block.html` |
+| Call phone number | `CompleteOutboundCall` | `call-phone-number.html` |
+| Check call progress | `CheckOutboundCallStatus` | `check-call-progress.html` |
+
+### Data — データ・属性・タスク系 (`references/params/data.md`)
+
+| UIブロック名 | ActionType | AWS Docs パス |
+|-------------|-----------|--------------|
+| Set contact attributes | `UpdateContactAttributes` | `set-contact-attributes.html` |
+| Check contact attributes | `Compare` | `check-contact-attributes.html` |
+| Contact tags | `TagContact` / `UnTagContact` | `contact-tags-block.html` |
+| Customer profiles | `GetCustomerProfile` 他5種 | `customer-profiles-block.html` |
+| Cases | `CreateCase` / `GetCase` / `UpdateCase` | `cases-block.html` |
+| Create task | `CreateTask` | `create-task-block.html` |
+| Create persistent contact association | `CreatePersistentContactAssociation` | `create-persistent-contact-association-block.html` |
+
+### Settings — 設定系 (`references/params/settings.md`)
+
+| UIブロック名 | ActionType | AWS Docs パス |
+|-------------|-----------|--------------|
+| Set logging behavior | `UpdateFlowLoggingBehavior` | `set-logging-behavior.html` |
+| Set recording and analytics behavior | `UpdateContactRecordingBehavior` | `set-recording-behavior.html` |
+| Set recording, analytics and processing behavior | `UpdateContactRecordingAndAnalyticsBehavior` | `set-recording-analytics-processing-behavior.html` |
+| Set voice | `UpdateContactTextToSpeechVoice` | `set-voice.html` |
+| Set callback number | `UpdateContactCallbackNumber` | `set-callback-number.html` |
+| Set disconnect flow | `UpdateContactEventHooks` | `set-disconnect-flow.html` |
+| Set event flow | `UpdateContactEventHooks` | `set-event-flow.html` |
+| Set hold flow | `UpdateContactEventHooks` | `set-hold-flow.html` |
+| Set whisper flow | `UpdateContactEventHooks` | `set-whisper-flow.html` |
+
+### Integration — 統合・フロー制御系 (`references/params/integration.md`)
+
+| UIブロック名 | ActionType | AWS Docs パス |
+|-------------|-----------|--------------|
+| AWS Lambda function | `InvokeLambdaFunction` | `invoke-lambda-function-block.html` |
+| Invoke module | `InvokeFlowModule` | `invoke-module-block.html` |
+| Return from module | `EndFlowModuleExecution` | `return-module.html` |
+| Loop | `Loop` | `loop.html` |
+| Disconnect / hang up | `DisconnectParticipant` | `disconnect-hang-up.html` |
+| End flow / Resume | `EndFlowExecution` | `end-flow-resume.html` |
+| Resume contact | `ResumeContact` | `resume-contact.html` |
+| Connect assistant | `CreateWisdomSession` | `connect-assistant-block.html` |
+
+### Security — 認証・メディア系 (`references/params/security.md`)
+
+| UIブロック名 | ActionType | AWS Docs パス |
+|-------------|-----------|--------------|
+| Authenticate Customer | `AuthenticateParticipant` | `authenticate-customer.html` |
+| Check Voice ID | `CheckVoiceId` | `check-voice-id.html` |
+| Set Voice ID | `StartVoiceIdStream` | `set-voice-id.html` |
+| Hold customer or agent | `UpdateParticipantState` | `hold-customer-agent.html` |
+| Start media streaming | `StartMediaStreaming` | `start-media-streaming.html` |
+| Stop media streaming | `StopMediaStreaming` | `stop-media-streaming.html` |
+
+> Note: AWS Docs パスはすべて `amazonconnect/latest/adminguide/` 配下。
+
+### パラメータ参照手順
+
+1. まず `references/params/*.md` のローカルキャッシュでパラメータ仕様を確認する
+2. キャッシュにない情報が必要な場合のみ `aws___read_documentation` でフォールバック参照する
 3. フローJSON生成時にドキュメントの仕様に従う
 
 ```
 例: GetParticipantInput のパラメータを確認する場合
-→ aws___read_documentation(path="amazonconnect/latest/adminguide/get-customer-input.html")
+→ references/params/interact.md の「Get customer input」セクションを参照
+→ 不足があれば aws___read_documentation(path="amazonconnect/latest/adminguide/get-customer-input.html")
 ```
